@@ -18,13 +18,14 @@ namespace tudat_applications
 //! Get path for output directory.
 static inline std::string getOutputPath( )
 {
-    // Declare file path string assigned to filePath.
-    // __FILE__ only gives the absolute path of the header file!
-    std::string filePath_( __FILE__ );
+    //    // Declare file path string assigned to filePath.
+    //    // __FILE__ only gives the absolute path of the header file!
+    //    std::string filePath_( __FILE__ );
 
-    // Strip filename from temporary string and return root-path string.
-    return ( filePath_.substr( 0, filePath_.length( ) -
-                               std::string( "WP1.cpp" ).length( ) ) ) + "PropagationResults";
+    //    // Strip filename from temporary string and return root-path string.
+    //    return ( filePath_.substr( 0, filePath_.length( ) -
+    //                               std::string( "WP1.cpp" ).length( ) ) ) + "PropagationResults";
+    return "D:/FILES/Documents/Thesis/PropagationResults";
 }
 
 }
@@ -66,9 +67,10 @@ int main( )
     bodyNames[ 2 ] = "Moon";
     bodyNames[ 3 ] = "Olfar";
 
-    double SunGravitationalParameter = 1.327124400E20;
-    double EarthGravitationalParameter = 3.986004418E14;
-    double MoonGravitationalParameter = 4.9048695E12;
+    // Gravitational Parameters from SMAD, p955
+    double SunGravitationalParameter = 1.32712440041E20;
+    double EarthGravitationalParameter = 3.986004356E14;
+    double MoonGravitationalParameter = 4.90280015E12;
 
     //    std::map< std::string, boost::shared_ptr< BodySettings > > bodySettings =
     //            getDefaultBodySettings(bodyNames);
@@ -91,7 +93,7 @@ int main( )
 
     // Create Olfar point mass
     bodyMap[ "Olfar" ] = boost::make_shared< simulation_setup::Body >( );
-    bodyMap[ "Olfar" ]->setConstantBodyMass( 3.5 );
+    bodyMap[ "Olfar" ]->setConstantBodyMass( 5.0 );
 
 
     // Finalize body creation.
@@ -165,8 +167,11 @@ int main( )
     SunInitialState [yCartesianVelocityIndex] = 0.0;
     SunInitialState [zCartesianVelocityIndex] = 0.0;
 
+    //Astronomical Unit in meters
+    const double AU = 149597870700;
+
     Eigen::Vector6d EarthInitialStateKeplerian;
-    EarthInitialStateKeplerian( semiMajorAxisIndex) = 149598023.0E3;
+    EarthInitialStateKeplerian( semiMajorAxisIndex) = 1.00000011 * AU;
     EarthInitialStateKeplerian( eccentricityIndex) = 0.0;
     EarthInitialStateKeplerian( inclinationIndex) = 0.0;
     EarthInitialStateKeplerian( argumentOfPeriapsisIndex) = 0.0;
@@ -174,7 +179,7 @@ int main( )
     EarthInitialStateKeplerian( trueAnomalyIndex ) = 0.0;
 
     Eigen::Vector6d MoonInitialStateKeplerian;
-    MoonInitialStateKeplerian( semiMajorAxisIndex ) = 384399.0E3;
+    MoonInitialStateKeplerian( semiMajorAxisIndex ) = 0.002570 * AU;
     MoonInitialStateKeplerian( eccentricityIndex ) = 0.0;
     MoonInitialStateKeplerian( inclinationIndex ) = 0.0;
     MoonInitialStateKeplerian( argumentOfPeriapsisIndex ) = 0.0;
@@ -275,15 +280,15 @@ int main( )
     /// Alpha1, Alpha2, Beta and Time are the sliding variables, which create the set of initial conditions.
 
     // Set the number of samples on each dimension
-    int sampleSizeA1 = 1;
-    int sampleSizeA2 = 2;
+    int sampleSizeA1 = 2;
+    int sampleSizeA2 = 1; //set to 0??
     int sampleSizeB = 2;
-    int sampleSizeT = 2;
+    int sampleSizeT = 1;
 
     // Create the vectors of each of the sliding variables. For segment 1, alpha1 must be zero and alpha2 must be larger than 0
-    Eigen::VectorXd alpha1 = Eigen::VectorXd::LinSpaced(sampleSizeA1, 0.0, 0.0);
-    Eigen::VectorXd alpha2 = Eigen::VectorXd::LinSpaced(sampleSizeA2, 0.0, 1E-10);
-    Eigen::VectorXd beta = Eigen::VectorXd::LinSpaced(sampleSizeB, -1E-10, 1E-10);
+    Eigen::VectorXd alpha1 = Eigen::VectorXd::LinSpaced(sampleSizeA1, -5E-10, 0.0);
+    Eigen::VectorXd alpha2 = Eigen::VectorXd::LinSpaced(sampleSizeA2, -1E-300, 1E-300);
+    Eigen::VectorXd beta = Eigen::VectorXd::LinSpaced(sampleSizeB, -2.0E-10, -0.65E-10);
     Eigen::VectorXd time = Eigen::VectorXd::LinSpaced(sampleSizeT, 0.0, 10000);
 
     // Create the variables that are used to save the inital conditions in the CR3BP
@@ -308,15 +313,18 @@ int main( )
 
     for(int alpha1Counter = 0; alpha1Counter <= alpha1.size(); alpha1Counter++)
     {
-        std::cerr<<"Alpha1+."<<std::endl;
+        std::cerr<<"S1, Alpha1 counter " + boost::lexical_cast< std::string >( alpha1Counter )<<std::endl;
         for(int alpha2Counter = 0; alpha2Counter <= alpha2.size(); alpha2Counter++)
         {
-            std::cerr<<"Alpha2+."<<std::endl;
+            //std::cerr<<"Alpha2+."<<std::endl;
+            std::cerr<<"S1, Alpha2 counter " + boost::lexical_cast< std::string >( alpha2Counter )<<std::endl;
             for(int betaCounter = 0; betaCounter <= beta.size(); betaCounter++)
             {
-                std::cerr<<"Beta+."<<std::endl;
+                std::cerr<<"S1, Beta counter " + boost::lexical_cast< std::string >( betaCounter )<<std::endl;
+                //std::cerr<<"Beta+."<<std::endl;
                 for(int timeCounter = 0; timeCounter <= time.size(); timeCounter++)
                 {
+
                     //std::cerr<<"Time+."<<std::endl;
                     ///
                     /// for the given alpha1, alpha2, beta and time, set the initial conditions
@@ -448,15 +456,15 @@ int main( )
     /// Alpha1, Alpha2, Beta and Time are the sliding variables, which create the set of initial conditions.
 
     // Set the number of samples on each dimension
-    sampleSizeA1 = 2;
-    sampleSizeA2 = 1;
+    sampleSizeA1 = 1; //set to 0??
+    sampleSizeA2 = 2;
     sampleSizeB = 2;
-    sampleSizeT = 2;
+    sampleSizeT = 1;
 
     // Create the vectors of each of the sliding variables. For segment 2, alpha1 must be larger than zero and alpha2 must be zer0
-    alpha1 = Eigen::VectorXd::LinSpaced(sampleSizeA1, 0, 1E-10);
-    alpha2 = Eigen::VectorXd::LinSpaced(sampleSizeA2, 0.0, 0.0);
-    beta = Eigen::VectorXd::LinSpaced(sampleSizeB, -1E-10, 1E-10);
+    alpha1 = Eigen::VectorXd::LinSpaced(sampleSizeA1, -1E-300, 1E-300);
+    alpha2 = Eigen::VectorXd::LinSpaced(sampleSizeA2, 0.0, 5E-10);
+    beta = Eigen::VectorXd::LinSpaced(sampleSizeB, -2.5E-10, -1.0E-10);
     time = Eigen::VectorXd::LinSpaced(sampleSizeT, 0.0, 10000);
 
     // Create the two matrix that will hold the initial conditions in the frame used for propagation.
@@ -470,15 +478,18 @@ int main( )
 
     for(int alpha1Counter = 0; alpha1Counter <= alpha1.size(); alpha1Counter++)
     {
-        std::cerr<<"Alpha1+."<<std::endl;
+        std::cerr<<"S2, Alpha1 counter " + boost::lexical_cast< std::string >( alpha1Counter )<<std::endl;
         for(int alpha2Counter = 0; alpha2Counter <= alpha2.size(); alpha2Counter++)
         {
-            std::cerr<<"Alpha2+."<<std::endl;
+            std::cerr<<"S2, alpha2 counter " + boost::lexical_cast< std::string >( alpha2Counter )<<std::endl;
+            //std::cerr<<"Alpha2+."<<std::endl;
             for(int betaCounter = 0; betaCounter <= beta.size(); betaCounter++)
             {
-                std::cerr<<"Beta+."<<std::endl;
+                std::cerr<<"S2, Beta counter " + boost::lexical_cast< std::string >( betaCounter )<<std::endl;
+                //std::cerr<<"Beta+."<<std::endl;
                 for(int timeCounter = 0; timeCounter <= time.size(); timeCounter++)
                 {
+
                     //std::cerr<<"Time+."<<std::endl;
                     ///
                     /// for the given alpha1, alpha2, beta and time, set the initial conditions
@@ -570,7 +581,7 @@ int main( )
     ///
 
     const double PropagationStartS3 = 0.0;
-    const double PropagationEndsS3 = -0.5E7;
+    const double PropagationEndsS3 = -0.1E7;
     StepSize = -500.0;
 
     /// Sun location remains unchanged
@@ -635,15 +646,15 @@ int main( )
 
     // Set the number of samples on each dimension
     sampleSizeA1 = 2;
-    sampleSizeA2 = 1;
+    sampleSizeA2 = 1; //set to 0??
     sampleSizeB = 2;
-    sampleSizeT = 2;
-    int sampleSizeM = 3;
+    sampleSizeT = 1;
+    int sampleSizeM = 1;
 
     // Create the vectors of each of the sliding variables. For segment 1, alpha1 must be zero and alpha2 must be larger than 0
-    alpha1 = Eigen::VectorXd::LinSpaced(sampleSizeA1, -1E9, 0.0);
-    alpha2 = Eigen::VectorXd::LinSpaced(sampleSizeA2, 0.0, 0.0);
-    beta = Eigen::VectorXd::LinSpaced(sampleSizeB, -1E-9, 1E-9);
+    alpha1 = Eigen::VectorXd::LinSpaced(sampleSizeA1, -1E-6, 1E-6);
+    alpha2 = Eigen::VectorXd::LinSpaced(sampleSizeA2, -1E-300, 1E-300);
+    beta = Eigen::VectorXd::LinSpaced(sampleSizeB, -1E-5, 0);
     time = Eigen::VectorXd::LinSpaced(sampleSizeT, 0.0, 10000);
     Eigen::VectorXd moonAngle = Eigen::VectorXd::LinSpaced(sampleSizeM, -1.5*pi, 1.0*pi);
 
@@ -659,15 +670,18 @@ int main( )
 
     for(int alpha1Counter = 0; alpha1Counter <= alpha1.size(); alpha1Counter++)
     {
-        std::cerr<<"Alpha1+."<<std::endl;
+        std::cerr<<"S3, Alpha1 counter " + boost::lexical_cast< std::string >( alpha1Counter )<<std::endl;
         for(int alpha2Counter = 0; alpha2Counter <= alpha2.size(); alpha2Counter++)
         {
-            std::cerr<<"Alpha2+."<<std::endl;
+            std::cerr<<"S3, Alpha2 counter " + boost::lexical_cast< std::string >( alpha2Counter )<<std::endl;
+            //std::cerr<<"Alpha2+."<<std::endl;
             for(int betaCounter = 0; betaCounter <= beta.size(); betaCounter++)
             {
-                std::cerr<<"Beta+."<<std::endl;
+                std::cerr<<"S3, Beta counter " + boost::lexical_cast< std::string >( betaCounter )<<std::endl;
+                //std::cerr<<"Beta+."<<std::endl;
                 for(int timeCounter = 0; timeCounter <= time.size(); timeCounter++)
                 {
+
                     for(int moonCounter = 0; moonCounter <= moonAngle.size(); moonCounter++)
                     {
 
@@ -771,6 +785,164 @@ int main( )
     ///////////////////////        LINK SEGMENTS INTO TRAjECTORIES               //////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     std::cerr<<"Started segment linking."<<std::endl;
+
+    std::vector< boost::filesystem::path > FileNames = input_output::listAllFilesInDirectory(tudat_applications::getOutputPath( ));
+    std::vector< std::string > S1Files;
+    std::vector< std::string > S2Files;
+    std::vector< std::string > S3Files;
+
+    int i=0;
+    int j=0;
+    int k=0;
+
+    for(int fileCounter = 0; fileCounter <= FileNames.size(); fileCounter++)
+    {
+        std::string currentFile = FileNames[fileCounter].string();
+
+        if(std::stoi( currentFile.substr(11,1) ) == 1)
+        {
+            S1Files.push_back(FileNames[fileCounter].string());
+            i=i+1;
+        }
+        else if(std::stoi( currentFile.substr(11,1) ) == 2)
+        {
+            S2Files.push_back(FileNames[fileCounter].string());
+            j=j+1;
+        }
+        else if(std::stoi( currentFile.substr(11,1) ) == 3)
+        {
+            S3Files.push_back(FileNames[fileCounter].string());
+            k=k+1;
+        }
+
+    }
+
+    std::cerr<<"Sectors divided"<<std::endl;
+
+
+    //Note to self: x@19, y@20
+    int stop;
+    int S1endtime;
+    double S1endX;
+    int S2starttime;
+    double S2startX;
+    int S2endtime;
+    double S2endY;
+    int S3starttime;
+    double S3startY;
+
+    for(int S1Counter = 0; S1Counter <= S1Files.size(); S1Counter++)
+        // For each of the Segment1 trajectories, find the passage through y=0 near the Lagrange point if there is any.
+    {
+        std::string path = S1Files.at(S1Counter);
+        Eigen::MatrixXd S1segment = input_output::readMatrixFromFile( path , ",");
+
+        stop = 0;
+        for(int S1time = 0; S1time <= S1segment.row(0).size(); S1time++)
+        {
+            if(stop == 0)
+            {
+                if(std::abs(S1segment(20,S1time)) <= 1E-5)
+                {
+                    if(S1segment(19,S1time) > 1E5 ){
+                        stop = 1;
+                        S1endtime = S1time;
+                        S1endX = S1segment(19,S1time);
+                    }
+                }
+            }
+        }
+
+        if(stop == 1)
+            // if there is no passage through y=0 near the Lagrange point, this segment is not used for further calculations.
+        {
+            for(int S2Counter = 0; S2Counter <= S2Files.size(); S2Counter++)
+                //For each of the Segment 2 trajectories, find the passage through y=0 near the Lagrange point if there is any. If there is, there is a S1-S2 link.
+
+            {
+                std::string path = S2Files.at(S2Counter);
+                Eigen::MatrixXd S2segment = input_output::readMatrixFromFile( path, ",");
+
+                stop = 0;
+                int match12 = 0;
+                for(int S2time = 0; S2time <= S2segment.row(0).size(); S2time++)
+                {
+                    if(stop == 0)
+                    {
+                        if(std::abs(S2segment(20,S2time)) <= 1E-5)
+                        {
+                            if(S2segment(19,S2time) > 1E5 ){
+                                stop = 1;
+                                S2starttime = S2time;
+                                S2startX = S2segment(19,S2time);
+
+                                if(std::abs(S1endX-S2startX) <= 100 )
+                                {
+                                    match12 = 1;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if(match12 == 1)
+                    // if there is no match between segments 1 and 2, there is no use working on with this segment
+                {
+
+                    stop = 0;
+
+                    for(int S2time = S2starttime; S2time<= S2segment.row(0).size(); S2time++)
+                    {
+                        if(stop == 0)
+                        {
+                            if(std::abs(S2segment(19,S2time)) <= 1E-5)
+                            {
+                                if(S2segment(20,S2time) > 0)
+                                {
+                                    stop = 1;
+                                    S2endtime = S2time;
+                                    S2endY = S2segment(20,S2time);
+                                }
+                            }
+                        }
+                    }
+
+                    if(stop == 1)
+                        // if there is no segment 2 ending in the desired area, there is no use working on with this segment
+                    {
+                        for(int S3Counter = 0; S3Counter <= S3Files.size(); S3Counter++)
+                        {
+                            std::string path = S3Files.at(S3Counter);
+                            Eigen::MatrixXd S3segment = input_output::readMatrixFromFile( path , ",");
+
+                            stop = 0;
+                            int match23 = 0;
+
+                            for(int S3time = 0; S3time <= S3segment.row(0).size(); S3time++)
+                            {
+                                if(stop == 0)
+                                {
+                                    if(std::abs(S3segment(19,S3time)) <= 1E-5)
+                                    {
+                                        if(S3segment(20,S3time) > 1E5 ){
+                                            stop = 1;
+                                            S3starttime = S3time;
+                                            S3startY = S3segment(20,S3time);
+
+                                            if(std::abs(S2endY-S3startY) <= 100 )
+                                            {
+                                                match23 = 1;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
