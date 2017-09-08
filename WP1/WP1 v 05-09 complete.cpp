@@ -212,8 +212,8 @@ int main( )
     ///
 
     const double PropagationStartS1 = 0.0;
-    const double PropagationEndsS1 = -0.2E7;
-    double StepSize = -100.0;
+    const double PropagationEndsS1 = -0.5E7;
+    double StepSize = -1000.0;
 
     /// Set the location of the Sun at PropagationStartS1
     double sunDistance = EarthInitialStateKeplerian(semiMajorAxisIndex);
@@ -280,17 +280,16 @@ int main( )
     /// Alpha1, Alpha2, Beta and Time are the sliding variables, which create the set of initial conditions.
 
     // Set the number of samples on each dimension
-    int sampleSizeA1 = 1;//4;
+    int sampleSizeA1 = 2;
     int sampleSizeA2 = 1; //set to 0??
-    int sampleSizeB = 4;
-    int sampleSizeT = 4;
+    int sampleSizeB = 2;
+    int sampleSizeT = 1;
 
     // Create the vectors of each of the sliding variables. For segment 1, alpha1 must be zero and alpha2 must be larger than 0
-    Eigen::VectorXd alpha1(5);// = Eigen::VectorXd::LinSpaced(sampleSizeA1, -5E-10, 0.0);
-    alpha1 << -5E-20, -5E-15, -5E-10, -5E-5, 0.0;
-    Eigen::VectorXd alpha2 = Eigen::VectorXd::LinSpaced(sampleSizeA2, -1E-999, -1E-998);//-1E-300, 1E-300);
-    Eigen::VectorXd beta = Eigen::VectorXd::LinSpaced(sampleSizeB, -1.0E-3, 1.0E-3);
-    Eigen::VectorXd time = Eigen::VectorXd::LinSpaced(sampleSizeT, 0.0, 1E6);
+    Eigen::VectorXd alpha1 = Eigen::VectorXd::LinSpaced(sampleSizeA1, -5E-10, 0.0);
+    Eigen::VectorXd alpha2 = Eigen::VectorXd::LinSpaced(sampleSizeA2, -1E-300, 1E-300);
+    Eigen::VectorXd beta = Eigen::VectorXd::LinSpaced(sampleSizeB, -2.0E-10, -0.65E-10);
+    Eigen::VectorXd time = Eigen::VectorXd::LinSpaced(sampleSizeT, 0.0, 10000);
 
     // Create the variables that are used to save the inital conditions in the CR3BP
 
@@ -349,31 +348,19 @@ int main( )
                             + alpha2[alpha2Counter] * exp( - labda * time[timeCounter] ) * u2[3]
                             + 2 * std::real( beta[betaCounter] * exp( nu * std::complex<double>(0,-1) * time[timeCounter]) * w1[3] );
 
-                    //std::cerr<<"NEXT"<<std::endl;
-                    //std::cerr<<"x is " + boost::lexical_cast< std::string >( x )<<std::endl;
-                    //std::cerr<<"y is " + boost::lexical_cast< std::string >( y )<<std::endl;
-
                     // scale the coordinates
                     x2 = sunDistance * (x + L2Distance -1.0 + earthSunMu );
                     y2 = sunDistance * y;
                     xdot2 = sunDistance * xdot;
                     ydot2 = sunDistance * ydot;
 
-                    //std::cerr<<"x2 is " + boost::lexical_cast< std::string >( x2 )<<std::endl;
-                    //std::cerr<<"y2 is " + boost::lexical_cast< std::string >( y2 )<<std::endl;
-
                     // add rotation and rotational speed to get initial conditions in the earth centered frame
 
                     initialConditionsS1(0) = x2 * std::cos(rotationAngle) + y2 * std::sin(rotationAngle) ;
                     initialConditionsS1(1) = y2 * std::cos(rotationAngle) - x2 * std::sin(rotationAngle) ;
 
-                    initialConditionsS1(2) = xdot2 * std::cos(rotationAngle) + ydot2 * std::sin(rotationAngle) +
-                            rotationSpeed * (- std::sin(rotationAngle) * x2 + std::cos(rotationAngle) * y2) ;
-                    initialConditionsS1(3) = ydot2 * std::cos(rotationAngle) - xdot2 * std::sin(rotationAngle) +
-                            rotationSpeed * (- std::cos(rotationAngle) * x2 - std::sin(rotationAngle) * y2) ;
-
-                    //std::cerr<<"init x is " + boost::lexical_cast< std::string >( initialConditionsS1(0) )<<std::endl;
-                    //std::cerr<<"init y is " + boost::lexical_cast< std::string >( initialConditionsS1(1) )<<std::endl;
+                    initialConditionsS1(2) = xdot2 * std::cos(rotationAngle) + ydot2 * std::sin(rotationAngle) + rotationSpeed * (- std::sin(rotationAngle) * x2 + std::cos(rotationAngle) * y2) ;
+                    initialConditionsS1(3) = ydot2 * std::cos(rotationAngle) - xdot2 * std::sin(rotationAngle) + rotationSpeed * (- std::cos(rotationAngle) * x2 - std::sin(rotationAngle) * y2) ;
 
                     //initial conditions in the earth centered frame, as used for the propagation
                     initialCartesianElementsS1[ xCartesianPositionIndex ] = initialConditionsS1(0);
@@ -470,14 +457,14 @@ int main( )
 
     // Set the number of samples on each dimension
     sampleSizeA1 = 1; //set to 0??
-    sampleSizeA2 = 1;//4;
-    sampleSizeB = 10;
-    sampleSizeT = 6;
+    sampleSizeA2 = 2;
+    sampleSizeB = 2;
+    sampleSizeT = 1;
 
     // Create the vectors of each of the sliding variables. For segment 2, alpha1 must be larger than zero and alpha2 must be zer0
     alpha1 = Eigen::VectorXd::LinSpaced(sampleSizeA1, -1E-300, 1E-300);
     alpha2 = Eigen::VectorXd::LinSpaced(sampleSizeA2, 0.0, 5E-10);
-    beta = Eigen::VectorXd::LinSpaced(sampleSizeB, -1.0E-3, 1.0E-3);
+    beta = Eigen::VectorXd::LinSpaced(sampleSizeB, -2.5E-10, -1.0E-10);
     time = Eigen::VectorXd::LinSpaced(sampleSizeT, 0.0, 10000);
 
     // Create the two matrix that will hold the initial conditions in the frame used for propagation.
@@ -658,11 +645,11 @@ int main( )
     /// Alpha1, Alpha2, Beta and Time are the sliding variables, which create the set of initial conditions.
 
     // Set the number of samples on each dimension
-    sampleSizeA1 = 4;
+    sampleSizeA1 = 2;
     sampleSizeA2 = 1; //set to 0??
-    sampleSizeB = 4;
-    sampleSizeT = 4;
-    int sampleSizeM = 3;
+    sampleSizeB = 2;
+    sampleSizeT = 1;
+    int sampleSizeM = 1;
 
     // Create the vectors of each of the sliding variables. For segment 1, alpha1 must be zero and alpha2 must be larger than 0
     alpha1 = Eigen::VectorXd::LinSpaced(sampleSizeA1, -1E-6, 1E-6);
