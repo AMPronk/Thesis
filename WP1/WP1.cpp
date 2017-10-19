@@ -12,8 +12,14 @@
 #include <complex>
 #include <iostream>
 #include <tuple>
+#include "C:/tudatBundle/tudatApplications/Thesis/WP1/initiateconstants.h"
+#include "C:/tudatBundle/tudatApplications/Thesis/WP1/initiateconstants.cpp"
 #include "C:/tudatBundle/tudatApplications/Thesis/WP1/CreateEphemeris.h"
 #include "C:/tudatBundle/tudatApplications/Thesis/WP1/CreateEphemeris.cpp"
+#include "C:/tudatBundle/tudatApplications/Thesis/WP1/FrameTransformation.h"
+#include "C:/tudatBundle/tudatApplications/Thesis/WP1/FrameTransformation.cpp"
+#include "C:/tudatBundle/tudatApplications/Thesis/WP1/createinitialconditions.h"
+#include "C:/tudatBundle/tudatApplications/Thesis/WP1/createinitialconditions.cpp"
 
 namespace tudat_applications
 {
@@ -56,9 +62,10 @@ int main( )
     bool addMoon = true;
     bool addOlfarSE = true;
     bool addOlfarEM = true;
-    const double PropagationStartS1 = 0.0;
-    const double PropagationEndsS1 = 10 * tudat::physical_constants::JULIAN_YEAR;
-    double StepSize = 2000.0;
+    const long double PropagationStartS1 = 0.0;
+    const long double PropagationEndsS1 = 0.5 * tudat::physical_constants::JULIAN_YEAR;
+    long double StepSize = 200.0;
+
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////     CREATE EPHEMERIS AND ACCELERATIONS       //////////////////////////////////////////////////
@@ -91,8 +98,10 @@ int main( )
 
     systemInitialState.segment(0 , 6 * counter) = CreateEphemerisInitialState(addSun, addEarth, addMoon);
 
-    /// Create initial states for Olfar
-    // TODO
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////     TESTPARTTESTPARTTESTPARTTESTPART       //////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // TODO REMOVE
 
     Eigen::VectorXd SC1InitialState = InitialStateSEL2();
 
@@ -108,10 +117,6 @@ int main( )
         systemInitialState.segment(counter*6 , 6) = SC2InitialState;
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ///////////////////////     CREATE INTEGRATION AND PROPAGATION       //////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
     boost::shared_ptr< IntegratorSettings< > > integratorSettingsS1 =
             boost::make_shared< IntegratorSettings< > >
             (rungeKutta4, PropagationStartS1, StepSize );
@@ -123,23 +128,110 @@ int main( )
     ///
     /// Create simulation object and propagate dynamics.
     ///
-    std::cerr<<"Start dynamics simulator."<<std::endl;
+    std::cerr<<"Start test dynamics simulator."<<std::endl;
     SingleArcDynamicsSimulator< > dynamicsSimulatorS1(
                 bodyMap, integratorSettingsS1, propagatorSettingsS1, true, false, false );
     std::map< double, Eigen::VectorXd > tempIntegrationResultS1 = dynamicsSimulatorS1.getEquationsOfMotionNumericalSolution( );
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////     WRITE TO FILE       /////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::cerr<<"Write to file."<<std::endl;
+    std::cerr<<"Write test to file."<<std::endl;
     input_output::writeDataMapToTextFile( tempIntegrationResultS1,
-                                          "WP1_TESTRUN.dat",
+                                          "WP1_L2locations.dat",
                                           tudat_applications::getOutputPath( ),
                                           "",
                                           std::numeric_limits< double >::digits10,
                                           std::numeric_limits< double >::digits10,
                                           "," );
+
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////     CREATE SET OF INITIAL CONDITIONS         //////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    std::cerr<<"Start initial conditions creation."<<std::endl;
+    Eigen::MatrixXd InitialConditionsSE = CreateInitialConditionsSE(0,1E-4,3.0,3.2);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////     CREATE INTEGRATION AND PROPAGATION       //////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    //bool run, can be switched of for testing.
+    bool run = 1;
+
+    if(run){
+        std::cerr<<"Start propagation."<<std::endl;
+        for(int setcount = 0; setcount <= InitialConditionsSE.rows() ; setcount++)
+        {
+            std::cerr<<"Start propagation " +
+                      boost::lexical_cast< std::string >( setcount )
+                      + " out of " +
+                      boost::lexical_cast< std::string >( InitialConditionsSE.rows() )
+                      + "."<<std::endl;
+
+            SC1InitialState = FrameTransformationSE(InitialConditionsSE(setcount,0),
+                                                    InitialConditionsSE(setcount,1),
+                                                    InitialConditionsSE(setcount,2),
+                                                    InitialConditionsSE(setcount,3));
+
+
+            if(addOlfarSE){
+                systemInitialState.segment(counter*6 , 6) = SC1InitialState;
+                if(addOlfarEM){
+                    systemInitialState.segment(counter*6+6 , 6) = SC2InitialState;
+                }
+            }
+            else if(addOlfarEM){
+                systemInitialState.segment(counter*6 , 6) = SC2InitialState;
+            }
+
+            std::cerr<<"Start create integ en propag."<<std::endl;
+            ///
+            /// Create integrator and propagator
+            ///
+            boost::shared_ptr< IntegratorSettings< > > integratorSettings =
+                    boost::make_shared< IntegratorSettings< > >
+                    (rungeKutta4, PropagationStartS1, StepSize );
+
+            boost::shared_ptr< TranslationalStatePropagatorSettings< > > propagatorSettings =
+                    boost::make_shared< TranslationalStatePropagatorSettings< > >
+                    (centralBodies, ModelMapSE, bodiesToPropagate, systemInitialState, PropagationEndsS1, cowell );
+
+            std::cerr<<"Start dynamics simulator."<<std::endl;
+            ///
+            /// Create simulation object and propagate dynamics.
+            ///
+            SingleArcDynamicsSimulator< > dynamicsSimulator(
+                        bodyMap, integratorSettings, propagatorSettings, true, false, false );
+            std::map< double, Eigen::VectorXd > tempIntegrationResult = dynamicsSimulator.getEquationsOfMotionNumericalSolution( );
+
+
+            ///
+            /// Write to file
+            ///
+            std::cerr<<"Started writing to file."<<std::endl;
+
+            input_output::writeDataMapToTextFile( tempIntegrationResult,
+                                                  "WP1_Orbit" + boost::lexical_cast< std::string >( setcount )
+                                                  + "_JacobiConstant" + boost::lexical_cast< std::string >( InitialConditionsSE(setcount,4) )
+                                                  + ".dat",
+                                                  tudat_applications::getOutputPath( ),
+                                                  "",
+                                                  std::numeric_limits< double >::digits10,
+                                                  std::numeric_limits< double >::digits10,
+                                                  "," );
+        }
+
+    }
+    else{
+        std::cerr<<"Do not start propagation."<<std::endl;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////     WRITE TO FILE       /////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 }
+
 
 
