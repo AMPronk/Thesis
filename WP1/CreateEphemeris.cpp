@@ -28,7 +28,6 @@ std::tuple<AccelerationMap, std::vector< std::string >, std::vector< std::string
 
     unsigned int NrOfBodies = 0;
 
-
     NamedBodyMap bodyMap;
 
     if(sun)
@@ -117,7 +116,7 @@ std::tuple<AccelerationMap, std::vector< std::string >, std::vector< std::string
     if(moon){
         if(earth){
             accelerationsOfMoon[ "Earth" ].push_back(
-                    boost::make_shared< AccelerationSettings >( central_gravity ) );
+                        boost::make_shared< AccelerationSettings >( central_gravity ) );
         }
         accelerationMap[ "Moon" ] = accelerationsOfMoon;
         bodiesToPropagate.push_back( "Moon" );
@@ -181,6 +180,30 @@ Eigen::VectorXd CreateEphemerisInitialState(bool sun, bool earth, bool moon)
     EarthInitialState [yCartesianVelocityIndex] = EarthInitialState[xCartesianPositionIndex] * 2.0 * pi / (secInYear);
     EarthInitialState [zCartesianVelocityIndex] = 0.0;
 
+//    Eigen::Vector6d SunInitialStateKeplerian;
+//    SunInitialStateKeplerian( semiMajorAxisIndex) = muSE * AU;
+//    SunInitialStateKeplerian( eccentricityIndex) = 0.0;
+//    SunInitialStateKeplerian( inclinationIndex) = 0.0;
+//    SunInitialStateKeplerian( argumentOfPeriapsisIndex) = 0.0;
+//    SunInitialStateKeplerian( longitudeOfAscendingNodeIndex) = 0.0;
+//    SunInitialStateKeplerian( trueAnomalyIndex ) = pi;
+
+//    Eigen::Vector6d SunInitialState = convertKeplerianToCartesianElements(
+//                SunInitialStateKeplerian,
+//                (double)SunGravitationalParameter + (double)EarthGravitationalParameter );
+
+//    Eigen::Vector6d EarthInitialStateKeplerian;
+//    EarthInitialStateKeplerian( semiMajorAxisIndex) = (1.0 - muSE) * AU;
+//    EarthInitialStateKeplerian( eccentricityIndex) = 0.0;
+//    EarthInitialStateKeplerian( inclinationIndex) = 0.0;
+//    EarthInitialStateKeplerian( argumentOfPeriapsisIndex) = 0.0;
+//    EarthInitialStateKeplerian( longitudeOfAscendingNodeIndex) = 0.0;
+//    EarthInitialStateKeplerian( trueAnomalyIndex ) = 0.0;
+
+//    Eigen::Vector6d EarthInitialState = convertKeplerianToCartesianElements(
+//                EarthInitialStateKeplerian,
+//                (double)SunGravitationalParameter + (double)EarthGravitationalParameter );
+
     Eigen::Vector6d MoonInitialState;
     MoonInitialState [xCartesianPositionIndex] = - MoonEarthDistance;
     MoonInitialState [yCartesianPositionIndex] = 0.0;
@@ -242,50 +265,51 @@ Eigen::VectorXd InitialStateSEL2()
 {
     //using equations from Astrodynamics reader, p66
 
-    long double alpha = muSE/(1.0-muSE);
-    long double beta = pow(alpha/3.0 , 1.0/3.0);
-    long double gamma = beta + pow(beta,2.0) / 3.0 - pow(beta,3.0) / 9.0 - pow(beta,4.0) * 31.0/81.0;
-
     Eigen::VectorXd earthInitial = CreateEphemerisInitialState(false,true,false);
 
     Eigen::VectorXd L2Initial = earthInitial;
 
-    long double z = pow( muSE/3.0 , 1.0/3.0 );
-    long double unscaledX = z + pow(z,2.0)/3.0 - pow(z,3.0)/9.0 + pow(z,4.0)*50.0/81.0 + 1.0 - muSE;
-
     // Create object containing the functions.
-    boost::shared_ptr< LibrationPointLocationFunction2 > LibrationPointLocationFunction = boost::make_shared< LibrationPointLocationFunction2 >( 1 );
+    boost::shared_ptr< LibrationPointLocationFunction2SE > LibrationPointLocationFunction = boost::make_shared< LibrationPointLocationFunction2SE >( 1 );
 
     // The termination condition.
     tudat::root_finders::NewtonRaphson::TerminationFunction terminationConditionFunction =
             boost::bind( &tudat::root_finders::termination_conditions::RootAbsoluteToleranceTerminationCondition< double >::checkTerminationCondition,
                          boost::make_shared< tudat::root_finders::termination_conditions::RootAbsoluteToleranceTerminationCondition< double > >(
-                                 LibrationPointLocationFunction->getTrueRootAccuracy( ) ), _1, _2, _3, _4, _5 );
+                             LibrationPointLocationFunction->getTrueRootAccuracy( ) ), _1, _2, _3, _4, _5 );
     // Test Newton-Raphson object.
     tudat::root_finders::NewtonRaphson newtonRaphson( terminationConditionFunction );
 
     // Let Newton-Raphson search for the root.
-    double gammaL = newtonRaphson.execute( LibrationPointLocationFunction, LibrationPointLocationFunction->getInitialGuess( ) );
+    long double gammaL = newtonRaphson.execute( LibrationPointLocationFunction, LibrationPointLocationFunction->getInitialGuess( ) );
 
-    L2Initial [xCartesianPositionIndex] = (gammaL + 1 - muSE) * AU; //unscaledX * AU; // (1.0-muSE+gamma)*AU;
-    L2Initial [yCartesianVelocityIndex] = L2Initial[xCartesianPositionIndex] * 2.0 * pi / (secInYear);
+    L2Initial [xCartesianPositionIndex] = (gammaL + 1.0 - muSE) * AU;
+    L2Initial [yCartesianVelocityIndex] = L2Initial[xCartesianPositionIndex] * 2.0 * pi / secInYear;
 
     return L2Initial;
 }
 
 Eigen::VectorXd InitialStateEML2()
 {
-
-    //using equations from Astrodynamics reader, p66
-    long double alpha = muEM/(1.0-muEM);
-    long double beta = pow(alpha/3.0 , 1.0/3.0);
-    long double gamma = beta + pow(beta,2.0) / 3.0 - pow(beta,3.0) / 9.0 - pow(beta,4.0) * 31.0/81.0;
-
     Eigen::VectorXd moonInitial = CreateEphemerisInitialState(false,false,true);
 
     Eigen::VectorXd L2Initial = moonInitial;
 
-    L2Initial [xCartesianPositionIndex] = moonInitial[xCartesianPositionIndex] * (1.0 + gamma);
+    // Create object containing the functions.
+    boost::shared_ptr< LibrationPointLocationFunction2EM > LibrationPointLocationFunction = boost::make_shared< LibrationPointLocationFunction2EM >( 1 );
+
+    // The termination condition.
+    tudat::root_finders::NewtonRaphson::TerminationFunction terminationConditionFunction =
+            boost::bind( &tudat::root_finders::termination_conditions::RootAbsoluteToleranceTerminationCondition< double >::checkTerminationCondition,
+                         boost::make_shared< tudat::root_finders::termination_conditions::RootAbsoluteToleranceTerminationCondition< double > >(
+                             LibrationPointLocationFunction->getTrueRootAccuracy( ) ), _1, _2, _3, _4, _5 );
+    // Test Newton-Raphson object.
+    tudat::root_finders::NewtonRaphson newtonRaphson( terminationConditionFunction );
+
+    // Let Newton-Raphson search for the root.
+    double gammaL = newtonRaphson.execute( LibrationPointLocationFunction, LibrationPointLocationFunction->getInitialGuess( ) );
+
+    L2Initial [xCartesianPositionIndex] = moonInitial[xCartesianPositionIndex] * (1.0 + gammaL);
     L2Initial [yCartesianVelocityIndex] = - 1023.0 / moonInitial[xCartesianPositionIndex] * L2Initial[xCartesianPositionIndex];
 
     return L2Initial;

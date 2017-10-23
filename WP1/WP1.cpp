@@ -63,8 +63,8 @@ int main( )
     bool addOlfarSE = true;
     bool addOlfarEM = true;
     const long double PropagationStartS1 = 0.0;
-    const long double PropagationEndsS1 = 0.5 * tudat::physical_constants::JULIAN_YEAR;
-    long double StepSize = 200.0;
+    const long double PropagationEndsS1 = 5 * tudat::physical_constants::JULIAN_YEAR;
+    long double StepSize = 100.0;
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -117,9 +117,18 @@ int main( )
         systemInitialState.segment(counter*6 , 6) = SC2InitialState;
     }
 
-    boost::shared_ptr< IntegratorSettings< > > integratorSettingsS1 =
-            boost::make_shared< IntegratorSettings< > >
-            (rungeKutta4, PropagationStartS1, StepSize );
+
+    const numerical_integrators::RungeKuttaCoefficients::CoefficientSets coefficientSetS1 =
+            numerical_integrators::RungeKuttaCoefficients::CoefficientSets::rungeKuttaFehlberg78;
+    double minimumStepSizeS1 = 1.0E-5;
+    double maximumStepSizeS1 = 1000;
+    double relativeErrorToleranceS1 = 1.0E-12;
+    double absoluteErrorToleranceS1 = 1.0E-12;
+
+    boost::shared_ptr< IntegratorSettings< > > integratorSettingsS1;
+    integratorSettingsS1 = boost::make_shared< RungeKuttaVariableStepSizeSettings< > >
+    (rungeKuttaVariableStepSize, PropagationStartS1, StepSize, coefficientSetS1,
+    minimumStepSizeS1, maximumStepSizeS1, relativeErrorToleranceS1, absoluteErrorToleranceS1 );
 
     boost::shared_ptr< TranslationalStatePropagatorSettings< > > propagatorSettingsS1 =
             boost::make_shared< TranslationalStatePropagatorSettings< > >
@@ -128,13 +137,13 @@ int main( )
     ///
     /// Create simulation object and propagate dynamics.
     ///
-    std::cerr<<"Start test dynamics simulator."<<std::endl;
+    std::cerr<<"Start L2 dynamics simulator."<<std::endl;
     SingleArcDynamicsSimulator< > dynamicsSimulatorS1(
                 bodyMap, integratorSettingsS1, propagatorSettingsS1, true, false, false );
     std::map< double, Eigen::VectorXd > tempIntegrationResultS1 = dynamicsSimulatorS1.getEquationsOfMotionNumericalSolution( );
 
 
-    std::cerr<<"Write test to file."<<std::endl;
+    std::cerr<<"Write L2 to file."<<std::endl;
     input_output::writeDataMapToTextFile( tempIntegrationResultS1,
                                           "WP1_L2locations.dat",
                                           tudat_applications::getOutputPath( ),
@@ -149,7 +158,7 @@ int main( )
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     std::cerr<<"Start initial conditions creation."<<std::endl;
-    Eigen::MatrixXd InitialConditionsSE = CreateInitialConditionsSE(0,1E-4,3.0,3.2);
+    Eigen::MatrixXd InitialConditionsSE = CreateInitialConditionsSE(0,1.0E-4,3.0,3.2);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////     CREATE INTEGRATION AND PROPAGATION       //////////////////////////////////////////////////
@@ -188,9 +197,17 @@ int main( )
             ///
             /// Create integrator and propagator
             ///
-            boost::shared_ptr< IntegratorSettings< > > integratorSettings =
-                    boost::make_shared< IntegratorSettings< > >
-                    (rungeKutta4, PropagationStartS1, StepSize );
+            const numerical_integrators::RungeKuttaCoefficients::CoefficientSets coefficientSet =
+                    numerical_integrators::RungeKuttaCoefficients::CoefficientSets::rungeKuttaFehlberg78;
+            double minimumStepSize = 1.0E-3;
+            double maximumStepSize = 1000;
+            double relativeErrorTolerance = 1.0E-12;
+            double absoluteErrorTolerance = 1.0E-12;
+
+            boost::shared_ptr< IntegratorSettings< > > integratorSettings;
+            integratorSettings = boost::make_shared< RungeKuttaVariableStepSizeSettings< > >
+            (rungeKuttaVariableStepSize, PropagationStartS1, StepSize, coefficientSet,
+            minimumStepSize, maximumStepSize, relativeErrorTolerance, absoluteErrorTolerance );
 
             boost::shared_ptr< TranslationalStatePropagatorSettings< > > propagatorSettings =
                     boost::make_shared< TranslationalStatePropagatorSettings< > >
