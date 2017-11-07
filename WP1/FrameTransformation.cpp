@@ -19,7 +19,7 @@ using namespace tudat::basic_astrodynamics;
 
 Eigen::Vector6d FrameTransformationSE(long double x, long double y, long double xdot, long double ydot)
 {
-    //define the distance of the L2 point from the SSB
+    //define the distance of the L2 point from the Earth
     Eigen::Vector6d L2location = InitialStateSEL2();
     long double L2Distance = L2location[0];
 

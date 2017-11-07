@@ -23,60 +23,100 @@ using namespace tudat::ephemerides;
 using namespace tudat::interpolators;
 using namespace tudat::basic_astrodynamics;
 
-std::tuple<AccelerationMap, std::vector< std::string >, std::vector< std::string >, NamedBodyMap> CreateEphemeris(bool sun, bool earth, bool moon, bool SCSE, bool SCEM)
+std::tuple<AccelerationMap, std::vector< std::string >, std::vector< std::string >, NamedBodyMap> CreateEphemeris(bool sun, bool earth, bool moon, bool SCSE, bool SCEM, double PropagationStart, double PropagationEnd)
 {
 
-    unsigned int NrOfBodies = 0;
-
     NamedBodyMap bodyMap;
+    std::map< std::string, boost::shared_ptr< BodySettings > > bodySettings;
+
+    std::vector< std::string > bodiesToCreate;
 
     if(sun)
     {
-        NrOfBodies = NrOfBodies + 1;
+        bodiesToCreate.push_back( "Sun" );
+    }
+    if(earth)
+    {
+        bodiesToCreate.push_back( "Earth" );
+    }
+    if(moon)
+    {
+        bodiesToCreate.push_back( "Moon" );
+    }
 
-        // Create sun point mass
-        bodyMap [ "Sun" ] = boost::make_shared< simulation_setup::Body >();
-        bodyMap [ "Sun" ]-> setGravityFieldModel( boost::make_shared< GravityFieldModel >( SunGravitationalParameter ) );
+    bodySettings = getDefaultBodySettings( bodiesToCreate, PropagationStart - 3000.0, PropagationEnd + 3000.0 );
+
+
+    if(sun)
+    {
+        Eigen::Vector6d SunInitialState;
+        SunInitialState( 0 ) = 0.0;//muSE * AU;
+        SunInitialState( 1 ) = 0.0;
+        SunInitialState( 2 ) = 0.0;
+        SunInitialState( 3 ) = 0.0;
+        SunInitialState( 4 ) = 0.0;
+        SunInitialState( 5  ) = 0.0;//pi;
+
+        bodySettings [ "Sun" ]-> ephemerisSettings = boost::make_shared< ConstantEphemerisSettings >(
+                    SunInitialState, "SSB", "J2000" );
+        bodySettings [ "Sun" ]-> gravityFieldSettings = boost::make_shared< CentralGravityFieldSettings >( SunGravitationalParameter );
+
+        bodySettings [ "Sun" ]-> atmosphereSettings = NULL;
+        bodySettings [ "Sun" ]-> rotationModelSettings = NULL;
+        bodySettings [ "Sun" ]-> shapeModelSettings = NULL;
     }
 
     if(earth)
     {
-        NrOfBodies = NrOfBodies + 1;
+        Eigen::Vector6d EarthInitialStateKeplerian;
+        EarthInitialStateKeplerian( semiMajorAxisIndex) = AU;//(1.0 - muSE) * AU;
+        EarthInitialStateKeplerian( eccentricityIndex) = 0.0;
+        EarthInitialStateKeplerian( inclinationIndex) = 0.0;
+        EarthInitialStateKeplerian( argumentOfPeriapsisIndex) = 0.0;
+        EarthInitialStateKeplerian( longitudeOfAscendingNodeIndex) = 0.0;
+        EarthInitialStateKeplerian( trueAnomalyIndex ) = 0.0;
 
-        // Create earth point mass
-        bodyMap [ "Earth" ] = boost::make_shared< simulation_setup::Body >();
-        bodyMap [ "Earth" ]-> setGravityFieldModel( boost::make_shared< GravityFieldModel >( EarthGravitationalParameter ) );
+        bodySettings [ "Earth" ]-> ephemerisSettings = boost::make_shared< KeplerEphemerisSettings >(
+                    EarthInitialStateKeplerian, PropagationStart, SunGravitationalParameter, "SSB", "J2000" );
+        bodySettings [ "Earth" ]-> gravityFieldSettings = boost::make_shared< CentralGravityFieldSettings >( EarthGravitationalParameter );
+        bodySettings [ "Earth" ]-> atmosphereSettings = NULL;
+        bodySettings [ "Earth" ]-> rotationModelSettings = NULL;
+        bodySettings [ "Earth" ]-> shapeModelSettings = NULL;
     }
 
     if(moon)
     {
-        NrOfBodies = NrOfBodies + 1;
+        Eigen::Vector6d MoonInitialStateKeplerian;
+        MoonInitialStateKeplerian( semiMajorAxisIndex) = MoonEarthDistance;
+        MoonInitialStateKeplerian( eccentricityIndex) = 0.0;
+        MoonInitialStateKeplerian( inclinationIndex) = 0.0;
+        MoonInitialStateKeplerian( argumentOfPeriapsisIndex) = 0.0;
+        MoonInitialStateKeplerian( longitudeOfAscendingNodeIndex) = 0.0;
+        MoonInitialStateKeplerian( trueAnomalyIndex ) = pi;
 
-        // Create moon point mass
-        bodyMap [ "Moon" ] = boost::make_shared< simulation_setup::Body >();
-        bodyMap [ "Moon" ]-> setGravityFieldModel( boost::make_shared< GravityFieldModel >( MoonGravitationalParameter ) );
+        bodySettings [ "Moon" ]-> ephemerisSettings = boost::make_shared< KeplerEphemerisSettings >(
+                    MoonInitialStateKeplerian, PropagationStart, EarthGravitationalParameter, "SSB", "J2000" );
+        bodySettings [ "Moon" ]-> gravityFieldSettings = boost::make_shared< CentralGravityFieldSettings >( MoonGravitationalParameter );
+        bodySettings [ "Moon" ]-> atmosphereSettings = NULL;
+        bodySettings [ "Moon" ]-> rotationModelSettings = NULL;
+        bodySettings [ "Moon" ]-> shapeModelSettings = NULL;
     }
+
+    bodyMap = createBodies(bodySettings);
 
     if(SCSE)
     {
-        NrOfBodies = NrOfBodies + 1;
-
         // Create the spacecraft point mass that is attracted by the sun and the earth
         bodyMap[ "Spacecraft1" ] = boost::make_shared< simulation_setup::Body >( );
-        bodyMap[ "Spacecraft1" ]->setConstantBodyMass( 5.0 );
     }
     if(SCEM)
     {
-        NrOfBodies = NrOfBodies + 1;
-
         // Create the spacecraft point mass that is attracted by the earth and the moon
         bodyMap[ "Spacecraft2" ] = boost::make_shared< simulation_setup::Body >( );
-        bodyMap[ "Spacecraft2" ]->setConstantBodyMass( 5.0 );
     }
 
     // Finalize body creation.
     setGlobalFrameBodyEphemerides( bodyMap, "SSB", "J2000" );
-
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////            CREATE ACCELERATIONS          ////////////////////////////////////////////////////
@@ -87,41 +127,8 @@ std::tuple<AccelerationMap, std::vector< std::string >, std::vector< std::string
     std::vector< std::string > bodiesToPropagate;
     std::vector< std::string > centralBodies;
 
-    std::map< std::string, std::vector< boost::shared_ptr< AccelerationSettings > > > accelerationsOfSun;
-    std::map< std::string, std::vector< boost::shared_ptr< AccelerationSettings > > > accelerationsOfEarth;
-    std::map< std::string, std::vector< boost::shared_ptr< AccelerationSettings > > > accelerationsOfMoon;
     std::map< std::string, std::vector< boost::shared_ptr< AccelerationSettings > > > accelerationsOfSCSE;
     std::map< std::string, std::vector< boost::shared_ptr< AccelerationSettings > > > accelerationsOfSCEM;
-
-    if(sun){
-        if(earth){
-            accelerationsOfSun[ "Earth" ].push_back(
-                        boost::make_shared< AccelerationSettings >( central_gravity ) );
-        }
-        accelerationMap[ "Sun" ] = accelerationsOfSun;
-        bodiesToPropagate.push_back( "Sun" );
-        centralBodies.push_back( "SSB" );
-    }
-
-    if(earth){
-        if(sun){
-            accelerationsOfEarth[ "Sun" ].push_back(
-                        boost::make_shared< AccelerationSettings >( central_gravity ) );
-        }
-        accelerationMap[ "Earth" ] = accelerationsOfEarth;
-        bodiesToPropagate.push_back( "Earth" );
-        centralBodies.push_back( "SSB" );
-    }
-
-    if(moon){
-        if(earth){
-            accelerationsOfMoon[ "Earth" ].push_back(
-                        boost::make_shared< AccelerationSettings >( central_gravity ) );
-        }
-        accelerationMap[ "Moon" ] = accelerationsOfMoon;
-        bodiesToPropagate.push_back( "Moon" );
-        centralBodies.push_back( "Earth" );
-    }
 
     if(SCSE){
         if(sun){
@@ -180,29 +187,29 @@ Eigen::VectorXd CreateEphemerisInitialState(bool sun, bool earth, bool moon)
     EarthInitialState [yCartesianVelocityIndex] = EarthInitialState[xCartesianPositionIndex] * 2.0 * pi / (secInYear);
     EarthInitialState [zCartesianVelocityIndex] = 0.0;
 
-//    Eigen::Vector6d SunInitialStateKeplerian;
-//    SunInitialStateKeplerian( semiMajorAxisIndex) = muSE * AU;
-//    SunInitialStateKeplerian( eccentricityIndex) = 0.0;
-//    SunInitialStateKeplerian( inclinationIndex) = 0.0;
-//    SunInitialStateKeplerian( argumentOfPeriapsisIndex) = 0.0;
-//    SunInitialStateKeplerian( longitudeOfAscendingNodeIndex) = 0.0;
-//    SunInitialStateKeplerian( trueAnomalyIndex ) = pi;
+    //    Eigen::Vector6d SunInitialStateKeplerian;
+    //    SunInitialStateKeplerian( semiMajorAxisIndex) = muSE * AU;
+    //    SunInitialStateKeplerian( eccentricityIndex) = 0.0;
+    //    SunInitialStateKeplerian( inclinationIndex) = 0.0;
+    //    SunInitialStateKeplerian( argumentOfPeriapsisIndex) = 0.0;
+    //    SunInitialStateKeplerian( longitudeOfAscendingNodeIndex) = 0.0;
+    //    SunInitialStateKeplerian( trueAnomalyIndex ) = pi;
 
-//    Eigen::Vector6d SunInitialState = convertKeplerianToCartesianElements(
-//                SunInitialStateKeplerian,
-//                (double)SunGravitationalParameter + (double)EarthGravitationalParameter );
+    //    Eigen::Vector6d SunInitialState = convertKeplerianToCartesianElements(
+    //                SunInitialStateKeplerian,
+    //                (double)SunGravitationalParameter + (double)EarthGravitationalParameter );
 
-//    Eigen::Vector6d EarthInitialStateKeplerian;
-//    EarthInitialStateKeplerian( semiMajorAxisIndex) = (1.0 - muSE) * AU;
-//    EarthInitialStateKeplerian( eccentricityIndex) = 0.0;
-//    EarthInitialStateKeplerian( inclinationIndex) = 0.0;
-//    EarthInitialStateKeplerian( argumentOfPeriapsisIndex) = 0.0;
-//    EarthInitialStateKeplerian( longitudeOfAscendingNodeIndex) = 0.0;
-//    EarthInitialStateKeplerian( trueAnomalyIndex ) = 0.0;
+    //    Eigen::Vector6d EarthInitialStateKeplerian;
+    //    EarthInitialStateKeplerian( semiMajorAxisIndex) = (1.0 - muSE) * AU;
+    //    EarthInitialStateKeplerian( eccentricityIndex) = 0.0;
+    //    EarthInitialStateKeplerian( inclinationIndex) = 0.0;
+    //    EarthInitialStateKeplerian( argumentOfPeriapsisIndex) = 0.0;
+    //    EarthInitialStateKeplerian( longitudeOfAscendingNodeIndex) = 0.0;
+    //    EarthInitialStateKeplerian( trueAnomalyIndex ) = 0.0;
 
-//    Eigen::Vector6d EarthInitialState = convertKeplerianToCartesianElements(
-//                EarthInitialStateKeplerian,
-//                (double)SunGravitationalParameter + (double)EarthGravitationalParameter );
+    //    Eigen::Vector6d EarthInitialState = convertKeplerianToCartesianElements(
+    //                EarthInitialStateKeplerian,
+    //                (double)SunGravitationalParameter + (double)EarthGravitationalParameter );
 
     Eigen::Vector6d MoonInitialState;
     MoonInitialState [xCartesianPositionIndex] = - MoonEarthDistance;
@@ -263,8 +270,6 @@ Eigen::VectorXd CreateEphemerisInitialState(bool sun, bool earth, bool moon)
 
 Eigen::VectorXd InitialStateSEL2()
 {
-    //using equations from Astrodynamics reader, p66
-
     Eigen::VectorXd earthInitial = CreateEphemerisInitialState(false,true,false);
 
     Eigen::VectorXd L2Initial = earthInitial;
@@ -281,10 +286,28 @@ Eigen::VectorXd InitialStateSEL2()
     tudat::root_finders::NewtonRaphson newtonRaphson( terminationConditionFunction );
 
     // Let Newton-Raphson search for the root.
-    long double gammaL = newtonRaphson.execute( LibrationPointLocationFunction, LibrationPointLocationFunction->getInitialGuess( ) );
+    long double gammaL = newtonRaphson.execute( LibrationPointLocationFunction, LibrationPointLocationFunction->getTrueRootLocation() );
 
-    L2Initial [xCartesianPositionIndex] = (gammaL + 1.0 - muSE) * AU;
-    L2Initial [yCartesianVelocityIndex] = L2Initial[xCartesianPositionIndex] * 2.0 * pi / secInYear;
+
+    //    long double alpha = muSE / (1.0 - muSE );
+    //    long double beta = pow ( alpha / 3.0, 1.0/3.0 );
+    //    long double gammaL= beta + pow( beta, 2.0 ) / 3.0 - pow( beta, 3.0 ) / 9.0 - pow( beta, 4.0 ) * 31.0 / 81.0;
+
+    //    long double z = pow( muSE / 3.0, 1.0/3.0 );
+    //    long double gammaL = z
+    //            + pow( z , 2.0 ) / 3.0
+    //            - pow( z , 3.0 ) / 9.0
+    //            + pow( z , 4.0 ) * 50.0 / 81.0;
+
+    L2Initial [xCartesianPositionIndex] = (gammaL + 1.0) * AU + 507.77269;
+    L2Initial [yCartesianVelocityIndex] = L2Initial[xCartesianPositionIndex] * 2.0 * pi / secInYear - 0.04517792301091;
+    //L2Initial [yCartesianVelocityIndex] = L2Initial[xCartesianPositionIndex] * 2.0 * pi / secInYear - 0.045177923;
+
+    std::cerr<<"GammaL is " +
+               boost::lexical_cast< std::string >( gammaL )
+               + " to get x location " +
+               boost::lexical_cast< std::string >( L2Initial [xCartesianPositionIndex] )
+               + "m."<<std::endl;
 
     return L2Initial;
 }

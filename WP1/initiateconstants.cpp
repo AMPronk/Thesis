@@ -10,6 +10,7 @@ const long double pi = tudat::mathematical_constants::LONG_PI ;
 const long double SunGravitationalParameter = 1.32712440018E20;
 const long double EarthGravitationalParameter = 3.986004418E14;
 const long double MoonGravitationalParameter = SunGravitationalParameter / ( 328900.56 * ( 1.0 + 81.30059 ) );
+const long double SSBGravitationalParameter = SunGravitationalParameter + EarthGravitationalParameter;
 
 
 const long double secInYear = tudat::physical_constants::SIDEREAL_YEAR;

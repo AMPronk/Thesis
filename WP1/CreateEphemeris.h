@@ -19,7 +19,7 @@ using namespace tudat::ephemerides;
 using namespace tudat::interpolators;
 using namespace tudat::basic_astrodynamics;
 
-std::tuple<AccelerationMap, std::vector<std::string>, std::vector<std::string>, NamedBodyMap> CreateEphemeris(bool sun, bool earth, bool moon, bool SCSE, bool SCEM);
+std::tuple<AccelerationMap, std::vector<std::string>, std::vector<std::string>, NamedBodyMap> CreateEphemeris(bool sun, bool earth, bool moon, bool SCSE, bool SCEM, double PropagationStart, double PropagationEnd);
 
 Eigen::VectorXd CreateEphemerisInitialState(bool sun, bool earth, bool moon);
 

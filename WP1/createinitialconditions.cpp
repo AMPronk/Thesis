@@ -16,7 +16,7 @@ using namespace tudat::ephemerides;
 using namespace tudat::interpolators;
 using namespace tudat::basic_astrodynamics;
 
-Eigen::MatrixXd CreateInitialConditionsSE(int orbitType, long double precision, long double energyLowerBound, long double energyHigherBound)
+Eigen::MatrixXd CreateInitialConditionsSE(int orbitType, int sampleSize, long double energyLowerBound, long double energyHigherBound)
 {
     ///orbit type definition
     // orbitType = 0 --> periodic orbit.                                                        alpha1 = 0 & alpha2 = 0.
@@ -36,36 +36,54 @@ Eigen::MatrixXd CreateInitialConditionsSE(int orbitType, long double precision, 
     Eigen::VectorXd beta;
     Eigen::VectorXd time;
 
+    long double LowerBeta = -5.0E-3;
+    long double HigherBeta = 5.0E-3;
+    int BetaCount= sampleSize;
+    beta = Eigen::VectorXd::LinSpaced(BetaCount, LowerBeta, HigherBeta);
+
+    long double LowerTime = 0.0;
+    long double HigherTime = 1.0E6;
+    int TimeCount = BetaCount; //todo, that's just ugly man.
+    time = Eigen::VectorXd::LinSpaced(TimeCount, LowerTime, HigherTime);
+
     if(orbitType == 0)
     {
+        std::cerr<<"Periodic Orbit."<<std::endl;
         alpha1(0) = 0.0;
         alpha2(0) = 0.0;
     }
     else if(orbitType == 1)
     {
+        std::cerr<<"Asymptotic, towards L2, inside of hillsphere. "<<std::endl;
         alpha1[0] = 0.0;
 
-        long double LowerAlpha2 = -1.0E-8;
+        long double LowerAlpha2 = -1.0E-3;
         long double HigherAlpha2 = 0.0;
-        int Alpha2Count = (HigherAlpha2 - LowerAlpha2)/precision;
+        int Alpha2Count = BetaCount;//(HigherAlpha2 - LowerAlpha2)/precision;
         alpha2.resize(Alpha2Count);
         alpha2 = Eigen::VectorXd::LinSpaced(Alpha2Count, LowerAlpha2, HigherAlpha2);
+
+        //std::cerr<<"Alpha2Count = " + boost::lexical_cast< std::string >( Alpha2Count )<<std::endl;
+        //std::cerr<<"alpha2 size = " + boost::lexical_cast< std::string >( alpha2.size() )<<std::endl;
+        //std::cerr<<"first alpha2 = " + boost::lexical_cast< std::string >(alpha2(0) )<<std::endl;
     }
     else if(orbitType == 2)
     {
+        std::cerr<<"Asymptotic, towards L2, outside of hillsphere. "<<std::endl;
         alpha1[0] = 0.0;
 
         long double LowerAlpha2 = 0.0;
-        long double HigherAlpha2 = 1.0E-8;
-        int Alpha2Count = (HigherAlpha2 - LowerAlpha2)/precision;
+        long double HigherAlpha2 = 1.0E-3;
+        int Alpha2Count = BetaCount;//((HigherAlpha2 - LowerAlpha2)/precision;
         alpha2.resize(Alpha2Count);
         alpha2 = Eigen::VectorXd::LinSpaced(Alpha2Count, LowerAlpha2, HigherAlpha2);
     }
     else if(orbitType == 3)
     {
-        long double LowerAlpha1 = -1.0E-8;
+        std::cerr<<"Asymptotic, away from L2, inside(?) hillsphere. "<<std::endl;
+        long double LowerAlpha1 = -1.0E-3;
         long double HigherAlpha1 = 0.0;
-        int Alpha1Count = (HigherAlpha1 - LowerAlpha1)/precision;
+        int Alpha1Count = BetaCount;//((HigherAlpha1 - LowerAlpha1)/precision;
         alpha1.resize(Alpha1Count);
         alpha1 = Eigen::VectorXd::LinSpaced(Alpha1Count, LowerAlpha1, HigherAlpha1);
 
@@ -73,9 +91,10 @@ Eigen::MatrixXd CreateInitialConditionsSE(int orbitType, long double precision, 
     }
     else if(orbitType == 4)
     {
+        std::cerr<<"Asymptotic, away from L2, outside(?) hillsphere. "<<std::endl;
         long double LowerAlpha1 = 0.0;
-        long double HigherAlpha1 = 1.0E-8;
-        int Alpha1Count = (HigherAlpha1 - LowerAlpha1)/precision;
+        long double HigherAlpha1 = 1.0E-3;
+        int Alpha1Count = BetaCount;//((HigherAlpha1 - LowerAlpha1)/precision;
         alpha1.resize(Alpha1Count);
         alpha1 = Eigen::VectorXd::LinSpaced(Alpha1Count, LowerAlpha1, HigherAlpha1);
 
@@ -83,57 +102,61 @@ Eigen::MatrixXd CreateInitialConditionsSE(int orbitType, long double precision, 
     }
     else if(orbitType == 5)
     {
+        std::cerr<<"non-transit orbit, inside hillsphere. "<<std::endl;
         long double LowerAlpha1 = 0.0;
         long double HigherAlpha1 = 1.0E-8;
-        int Alpha1Count = (HigherAlpha1 - LowerAlpha1)/precision;
+        int Alpha1Count = BetaCount;//((HigherAlpha1 - LowerAlpha1)/precision;
         alpha1.resize(Alpha1Count);
         alpha1 = Eigen::VectorXd::LinSpaced(Alpha1Count, LowerAlpha1, HigherAlpha1);
 
         long double LowerAlpha2 = 0.0;
         long double HigherAlpha2 = 1.0E-8;
-        int Alpha2Count = (HigherAlpha2 - LowerAlpha2)/precision;
+        int Alpha2Count = BetaCount;//((HigherAlpha2 - LowerAlpha2)/precision;
         alpha2.resize(Alpha2Count);
         alpha2 = Eigen::VectorXd::LinSpaced(Alpha2Count, LowerAlpha2, HigherAlpha2);
     }
     else if(orbitType == 6)
     {
+        std::cerr<<"non-transit orbit, outside hillsphere. "<<std::endl;
         long double LowerAlpha1 = -1.0E-8;
         long double HigherAlpha1 = 0.0;
-        int Alpha1Count = (HigherAlpha1 - LowerAlpha1)/precision;
+        int Alpha1Count = BetaCount;//((HigherAlpha1 - LowerAlpha1)/precision;
         alpha1.resize(Alpha1Count);
         alpha1 = Eigen::VectorXd::LinSpaced(Alpha1Count, LowerAlpha1, HigherAlpha1);
 
         long double LowerAlpha2 = -1.0E-8;
         long double HigherAlpha2 = 0.0;
-        int Alpha2Count = (HigherAlpha2 - LowerAlpha2)/precision;
+        int Alpha2Count = BetaCount;//((HigherAlpha2 - LowerAlpha2)/precision;
         alpha2.resize(Alpha2Count);
         alpha2 = Eigen::VectorXd::LinSpaced(Alpha2Count, LowerAlpha2, HigherAlpha2);
     }
     else if(orbitType == 7)
     {
+        std::cerr<<"transit orbit, inside hillsphere. "<<std::endl;
         long double LowerAlpha1 = -1.0E-8;
         long double HigherAlpha1 = 0.0;
-        int Alpha1Count = (HigherAlpha1 - LowerAlpha1)/precision;
+        int Alpha1Count = BetaCount;//((HigherAlpha1 - LowerAlpha1)/precision;
         alpha1.resize(Alpha1Count);
         alpha1 = Eigen::VectorXd::LinSpaced(Alpha1Count, LowerAlpha1, HigherAlpha1);
 
         long double LowerAlpha2 = 0.0;
         long double HigherAlpha2 = 1.0E-8;
-        int Alpha2Count = (HigherAlpha2 - LowerAlpha2)/precision;
+        int Alpha2Count = BetaCount;//((HigherAlpha2 - LowerAlpha2)/precision;
         alpha2.resize(Alpha2Count);
         alpha2 = Eigen::VectorXd::LinSpaced(Alpha2Count, LowerAlpha2, HigherAlpha2);
     }
     else if(orbitType == 8)
     {
+        std::cerr<<"transit orbit, outside hillsphere. "<<std::endl;
         long double LowerAlpha1 = 0.0;
         long double HigherAlpha1 = 1.0E-8;
-        int Alpha1Count = (HigherAlpha1 - LowerAlpha1)/precision;
+        int Alpha1Count = BetaCount;//((HigherAlpha1 - LowerAlpha1)/precision;
         alpha1.resize(Alpha1Count);
         alpha1 = Eigen::VectorXd::LinSpaced(Alpha1Count, LowerAlpha1, HigherAlpha1);
 
         long double LowerAlpha2 = -1.0E-8;
         long double HigherAlpha2 = 0.0;
-        int Alpha2Count = (HigherAlpha2 - LowerAlpha2)/precision;
+        int Alpha2Count = BetaCount;//((HigherAlpha2 - LowerAlpha2)/precision;
         alpha2.resize(Alpha2Count);
         alpha2 = Eigen::VectorXd::LinSpaced(Alpha2Count, LowerAlpha2, HigherAlpha2);
     }
@@ -142,15 +165,7 @@ Eigen::MatrixXd CreateInitialConditionsSE(int orbitType, long double precision, 
         return InitialConditions;
     }
 
-    long double LowerBeta = -5.0E-3;
-    long double HigherBeta = 5.0E-3;
-    int BetaCount= (HigherBeta - LowerBeta)/precision;
-    beta = Eigen::VectorXd::LinSpaced(BetaCount, LowerBeta, HigherBeta);
 
-    long double LowerTime = 0.0;
-    long double HigherTime = 1.0E6;
-    int TimeCount = BetaCount; //todo, that's just ugly man.
-    time = Eigen::VectorXd::LinSpaced(TimeCount, LowerTime, HigherTime);
 
     /// Create the eigenvectors required
     Eigen::Vector6d L2location = InitialStateSEL2();
@@ -177,9 +192,9 @@ Eigen::MatrixXd CreateInitialConditionsSE(int orbitType, long double precision, 
 
     Eigen::Vector4cd w1;
     w1[0] = 1.0;
-    w1[1] = w1[0] * ( -pow( (double)nu , 2.0 ) - (double)a ) / (2.0 * (double)nu * std::complex<double>(0,-1));
-    w1[2] = w1[0] * (double)nu * std::complex<double>(0,-1);
-    w1[3] = w1[1] * (double)nu * std::complex<double>(0,-1);
+    w1[1] = w1[0] * ( -pow( static_cast<double>(nu) , 2.0 ) - static_cast<double>(a) ) / (2.0 * static_cast<double>(nu) * std::complex<double>(0,-1));
+    w1[2] = w1[0] * static_cast<double>(nu) * std::complex<double>(0,-1);
+    w1[3] = w1[1] * static_cast<double>(nu) * std::complex<double>(0,-1);
 
     long double x;
     long double y;
@@ -190,13 +205,13 @@ Eigen::MatrixXd CreateInitialConditionsSE(int orbitType, long double precision, 
 
     for(int alpha1Counter = 0; alpha1Counter < alpha1.size(); alpha1Counter++)
         {
-        std::cerr<<" next alpha1 "<<std::endl;
+//        std::cerr<<" next alpha1 "<<std::endl;
             for(int alpha2Counter = 0; alpha2Counter < alpha2.size(); alpha2Counter++)
             {
-                std::cerr<<" next alpha2 "<<std::endl;
+//                std::cerr<<" next alpha2 "<<std::endl;
                 for(int betaCounter = 0; betaCounter < beta.size(); betaCounter++)
                 {
-                    std::cerr<<" next beta "<<std::endl;
+//                    std::cerr<<" next beta "<<std::endl;
                     for(int timeCounter = 0; timeCounter < time.size(); timeCounter++)
                     {
                         ///
@@ -225,9 +240,11 @@ Eigen::MatrixXd CreateInitialConditionsSE(int orbitType, long double precision, 
                                 2 * muSE / pow( pow( x + L2Distance - 1.0 + muSE , 2.0 ) + pow( y , 2.0 ) , 0.5 ) -
                                 pow( pow(xdot,2.0) + pow(ydot,2.0) , 0.5 );
 
+//                        std::cerr<<"Found C" + boost::lexical_cast< std::string >(C)<<std::endl;
+
                         if((energyLowerBound <= C) && (C <= energyHigherBound))
                         {
-                            std::cerr<<"accepted #" + boost::lexical_cast< std::string >(resultcounter + 1) + " C " + boost::lexical_cast< std::string >( C )<<std::endl;
+//                            std::cerr<<"accepted #" + boost::lexical_cast< std::string >(resultcounter + 1) + " C " + boost::lexical_cast< std::string >( C )<<std::endl;
 
                             //Eigen::VectorXd tempConditions = InitialConditions;
                             //InitialConditions.resize(tempConditions.rows()+1,tempConditions.cols());
@@ -255,7 +272,7 @@ Eigen::MatrixXd CreateInitialConditionsSE(int orbitType, long double precision, 
     return InitialConditions;
 }
 
-Eigen::MatrixXd CreateInitialConditionsEM(int orbitType, long double precision, long double energyLowerBound, long double energyHigherBound)
+Eigen::MatrixXd CreateInitialConditionsEM(int orbitType, int sampleSize, long double energyLowerBound, long double energyHigherBound)
 {
 
 }
