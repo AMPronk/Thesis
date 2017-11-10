@@ -20,17 +20,10 @@
 #include "C:/tudatBundle/tudatApplications/Thesis/WP1/FrameTransformation.cpp"
 #include "C:/tudatBundle/tudatApplications/Thesis/WP1/createinitialconditions.h"
 #include "C:/tudatBundle/tudatApplications/Thesis/WP1/createinitialconditions.cpp"
+#include "C:/tudatBundle/tudatApplications/Thesis/WP1/writetofile.h"
+#include "C:/tudatBundle/tudatApplications/Thesis/WP1/writetofile.cpp"
 
-namespace tudat_applications
-{
 
-//! Get path for output directory.
-static inline std::string getOutputPath( )
-{
-    return "D:/FILES/Documents/Thesis/PropagationResults";
-}
-
-}
 
 int main( )
 {
@@ -61,10 +54,31 @@ int main( )
     bool addEarth = true;
     bool addMoon = false;
     bool addOlfarSE = true;
-    bool addOlfarEM = false;
-    const long double PropagationStart = 0.0; //1.0 * tudat::physical_constants::SIDEREAL_YEAR;
-    const long double PropagationEnds = 1.0 * tudat::physical_constants::SIDEREAL_YEAR;
-    long double StepSize = 0.5;
+    bool addOlfarEM = false; //TODO, script doesn't support this right now.
+
+    bool orbitType1 = true;
+    bool orbitType2 = true;
+    bool orbitType3 = true;
+    bool orbitType4 = false;
+    bool orbitType5 = false;
+    bool orbitType6 = false;
+
+    const long double PropagationLength = 1.0 * tudat::physical_constants::SIDEREAL_YEAR;
+
+    const numerical_integrators::RungeKuttaCoefficients::CoefficientSets coefficientSet =
+            numerical_integrators::RungeKuttaCoefficients::CoefficientSets::rungeKuttaFehlberg78;
+    double initStepSizeB = -1.0;
+    double initStepSizeF = 1.0;
+
+    double minimumStepSizeB = -1.0E-5;
+    double maximumStepSizeB = -50.0;
+    double minimumStepSizeF = 1.0E-5;
+    double maximumStepSizeF = 50.0;
+
+    double relativeErrorTolerance = -1.0E-20;
+    double absoluteErrorTolerance = -1.0E-12;
+
+    int StepSize = 50;
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -77,7 +91,7 @@ int main( )
     std::vector< std::string > centralBodies;
     NamedBodyMap bodyMap;
 
-    auto Ephemeris = CreateEphemeris(addSun, addEarth, addMoon, addOlfarSE, addOlfarEM, PropagationStart, PropagationEnds);
+    auto Ephemeris = CreateEphemeris(addSun, addEarth, addMoon, addOlfarSE, addOlfarEM, 0.0, PropagationLength);
     ModelMapSE = std::get<0>(Ephemeris);
     bodiesToPropagate = std::get<1>(Ephemeris);
     centralBodies = std::get<2>(Ephemeris);
@@ -86,15 +100,7 @@ int main( )
 
     /// Create initial states of all bodies exept Olfar
 
-    int counter = 0;
-    if(addOlfarSE){
-        counter = counter + 1;
-    }
-    if(addOlfarEM){
-        counter = counter + 1;
-    }
-
-    Eigen::VectorXd systemInitialState = Eigen::VectorXd(counter * 6);
+    Eigen::VectorXd systemInitialState = Eigen::VectorXd(6);
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -102,33 +108,24 @@ int main( )
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // TODO REMOVE
 
-    bool runtest = 1;
+    bool runtest = 0;
 
     Eigen::VectorXd SC1InitialState = InitialStateSEL2();
 
-    Eigen::VectorXd SC2InitialState = InitialStateEML2();
-
     if(runtest){
 
-        if(addOlfarSE){
-            systemInitialState.segment(0 , 6) = SC1InitialState;
-            if(addOlfarEM){
-                systemInitialState.segment(6 , 6) = SC2InitialState;
-            }
-        }
-        else if(addOlfarEM){
-            systemInitialState.segment(0 , 6) = SC2InitialState;
-        }
+        systemInitialState = SC1InitialState;
 
         const numerical_integrators::RungeKuttaCoefficients::CoefficientSets coefficientSetS1 =
                 numerical_integrators::RungeKuttaCoefficients::CoefficientSets::rungeKuttaFehlberg78;
-        double StepSizeS1 = 1;
-        double minimumStepSizeS1 = 1E-5;
-        double maximumStepSizeS1 = 1E2;
-        double relativeErrorToleranceS1 = 1E-20;
-        double absoluteErrorToleranceS1 = 1E-12;
+        double StepSizeS1 = -20.0;
+        double minimumStepSizeS1 = -1.0;//E-5;
+        double maximumStepSizeS1 = -50.0;
+        double relativeErrorToleranceS1 = 1.0E-20;
+        double absoluteErrorToleranceS1 = 1.0E-12;
 
-        double PropagationEndsS1 = 2.0 * tudat::physical_constants::SIDEREAL_DAY;
+        double PropagationStartS1 = PropagationLength;
+        double PropagationEndsS1 = 0.0;
 
 //        boost::shared_ptr< IntegratorSettings< > > integratorSettingsS1;
 //        integratorSettingsS1 = boost::make_shared< RungeKuttaVariableStepSizeSettings< > >
@@ -136,8 +133,8 @@ int main( )
 //                 minimumStepSizeS1, maximumStepSizeS1, relativeErrorToleranceS1, absoluteErrorToleranceS1 );
 
         boost::shared_ptr< IntegratorSettings< > > integratorSettingsS1 =
-                boost::make_shared< IntegratorSettings< > >
-                (rungeKutta4, PropagationStart, 1 );
+                    boost::make_shared< IntegratorSettings< > >
+                    ( rungeKutta4, PropagationStartS1, -50 );
 
         boost::shared_ptr< TranslationalStatePropagatorSettings< > > propagatorSettingsS1 =
                 boost::make_shared< TranslationalStatePropagatorSettings< > >
@@ -222,168 +219,169 @@ int main( )
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ///////////////////////     CREATE SET OF INITIAL CONDITIONS         //////////////////////////////////////////////////
+    ///////////////////////     CREATE NECESSARY VARIABLE SAVINGS               ///////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::cerr<<"Start initial conditions creation."<<std::endl;
-    Eigen::MatrixXd InitialConditionsSE = CreateInitialConditionsSE(2,50,3.0,3.2);
+
+    Eigen::MatrixXd InitialConditionsSE;
+    Eigen::MatrixXd InitialConditionsEM;
+    long double PropagationStart;
+    long double PropagationEnds;
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ///////////////////////     CREATE INTEGRATION AND PROPAGATION       //////////////////////////////////////////////////
+    ///////////////////////     RUN ORBIT TYPE 1: ASYMPTOTIC, TOWARDS L2        ///////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    //bool run, can be switched off for testing.
-    bool run = 0;
+    if(orbitType1)
+    {
+        std::cerr<<"Start orbit type 1."<<std::endl;
 
-    if(run){
-        std::cerr<<"Start propagation."<<std::endl;
-
-        std::map< double, Eigen::VectorXd > sunBarycentricStates;
-        std::map< double, Eigen::VectorXd > earthBarycentricStates;
-        std::map< double, Eigen::VectorXd > moonBarycentricStates;
+        InitialConditionsSE = CreateInitialConditionsSE(1,StepSize,3.0,3.2);
 
         for(int setcount = 2; setcount <= InitialConditionsSE.rows() ; setcount++)
         {
-            std::cerr<<"Start propagation " +
+            std::cerr<<"Start OT1 propagation " +
                        boost::lexical_cast< std::string >( setcount )
                        + " out of " +
                        boost::lexical_cast< std::string >( InitialConditionsSE.rows() )
                        + "."<<std::endl;
+
+            ///
+            /// Create initial conditions
+            ///
 
             SC1InitialState = FrameTransformationSE(InitialConditionsSE(setcount,0),
                                                     InitialConditionsSE(setcount,1),
                                                     InitialConditionsSE(setcount,2),
                                                     InitialConditionsSE(setcount,3));
 
+            systemInitialState = SC1InitialState;
 
-            if(addOlfarSE){
-                systemInitialState.segment(0 , 6) = SC1InitialState;
-                if(addOlfarEM){
-                    systemInitialState.segment(6 , 6) = SC2InitialState;
-                }
-            }
-            else if(addOlfarEM){
-                systemInitialState.segment(0 , 6) = SC2InitialState;
-            }
 
-            std::cerr<<"Start create integ en propag."<<std::endl;
+
             ///
-            /// Create integrator and propagator
+            /// Create Integrator and Propagator
             ///
-            const numerical_integrators::RungeKuttaCoefficients::CoefficientSets coefficientSet =
-                    numerical_integrators::RungeKuttaCoefficients::CoefficientSets::rungeKuttaFehlberg78;
-            double minimumStepSize = 1.0E-5;
-            double maximumStepSize = 1.0E2;
-            double relativeErrorTolerance = 1.0E-20;
-            double absoluteErrorTolerance = 1.0E-12;
 
-//            boost::shared_ptr< IntegratorSettings< > > integratorSettings;
-//            integratorSettings = boost::make_shared< RungeKuttaVariableStepSizeSettings< > >
-//                    (rungeKuttaVariableStepSize, PropagationStart, StepSize, coefficientSet,
-//                     minimumStepSize, maximumStepSize, relativeErrorTolerance, absoluteErrorTolerance );
+            PropagationStart = PropagationLength;
+            PropagationEnds = 0.0;
 
-            boost::shared_ptr< IntegratorSettings< > > integratorSettings =
-                    boost::make_shared< IntegratorSettings< > >
-                    (rungeKutta4, PropagationStart, -100 );
+
+            boost::shared_ptr< IntegratorSettings< > > integratorSettings;
+            integratorSettings = boost::make_shared< RungeKuttaVariableStepSizeSettings< > >
+                    (rungeKuttaVariableStepSize, PropagationStart, initStepSizeB, coefficientSet,
+                     minimumStepSizeB, maximumStepSizeB, relativeErrorTolerance, absoluteErrorTolerance );
+
+//            boost::shared_ptr< IntegratorSettings< > > integratorSettings =
+//                        boost::make_shared< IntegratorSettings< > >
+//                        ( rungeKutta4, PropagationStart, -50 );
 
             boost::shared_ptr< TranslationalStatePropagatorSettings< > > propagatorSettings =
                     boost::make_shared< TranslationalStatePropagatorSettings< > >
                     (centralBodies, ModelMapSE, bodiesToPropagate, systemInitialState, PropagationEnds, cowell );
 
-            std::cerr<<"Start dynamics simulator."<<std::endl;
             ///
             /// Create simulation object and propagate dynamics.
             ///
+
             SingleArcDynamicsSimulator< > dynamicsSimulator(
                         bodyMap, integratorSettings, propagatorSettings, true, true, false );
 
             std::map< double, Eigen::VectorXd > tempIntegrationResult = dynamicsSimulator.getEquationsOfMotionNumericalSolution( );
 
-            std::cerr<<"Read planetary states."<<std::endl;
+            double C = InitialConditionsSE(setcount,4);
+            double alpha1 = InitialConditionsSE(setcount,5);
+            double alpha2 = InitialConditionsSE(setcount,6);
+            double beta = InitialConditionsSE(setcount,7);
+            double time = InitialConditionsSE(setcount,8);
 
-            for( std::map< double, Eigen::VectorXd >::const_iterator stateIterator = tempIntegrationResult.begin( );
-                 stateIterator != tempIntegrationResult.end( ); stateIterator++ )
-            {
-                if(addSun){
-                    sunBarycentricStates[ stateIterator->first ] = bodyMap.at( "Sun" )->getStateInBaseFrameFromEphemeris(
-                                stateIterator->first );
-                }
-                if(addEarth){
-                    earthBarycentricStates[ stateIterator->first ] = bodyMap.at( "Earth" )->getStateInBaseFrameFromEphemeris(
-                                stateIterator->first );
-                }
-                if(addMoon){
-                    moonBarycentricStates[ stateIterator->first ] = bodyMap.at( "Moon" )->getStateInBaseFrameFromEphemeris(
-                                stateIterator->first );
-                }
-            }
+            std::string filename = "orbittype1_nr=" + boost::lexical_cast< std::string >( setcount )
+                    + "_C=" + boost::lexical_cast< std::string >( C )
+                    + "_a1=" + boost::lexical_cast< std::string >( alpha1 )
+                    + "_a2=" + boost::lexical_cast< std::string >( alpha2 )
+                    + "_t=" + boost::lexical_cast< std::string >( time );
 
-
-            ///
-            /// Write to file
-            ///
-            std::cerr<<"Started writing to file."<<std::endl;
-
-            //write planet data to file
-            if(addSun){
-                input_output::writeDataMapToTextFile( sunBarycentricStates,
-                                                      "WP1_SunOrbit" + boost::lexical_cast< std::string >( setcount )
-                                                      + "_JacobiConstant" + boost::lexical_cast< std::string >( InitialConditionsSE(setcount,4) )
-                                                      + ".dat",
-                                                      tudat_applications::getOutputPath( ),
-                                                      "",
-                                                      std::numeric_limits< double >::digits10,
-                                                      std::numeric_limits< double >::digits10,
-                                                      "," );
-            }
-            if(addEarth){
-                input_output::writeDataMapToTextFile( earthBarycentricStates,
-                                                      "WP1_EarthOrbit" + boost::lexical_cast< std::string >( setcount )
-                                                      + "_JacobiConstant" + boost::lexical_cast< std::string >( InitialConditionsSE(setcount,4) )
-                                                      + ".dat",
-                                                      tudat_applications::getOutputPath( ),
-                                                      "",
-                                                      std::numeric_limits< double >::digits10,
-                                                      std::numeric_limits< double >::digits10,
-                                                      "," );
-            }
-            if(addMoon){
-                input_output::writeDataMapToTextFile( moonBarycentricStates,
-                                                      "WP1_MoonOrbit" + boost::lexical_cast< std::string >( setcount )
-                                                      + "_JacobiConstant" + boost::lexical_cast< std::string >( InitialConditionsSE(setcount,4) )
-                                                      + ".dat",
-                                                      tudat_applications::getOutputPath( ),
-                                                      "",
-                                                      std::numeric_limits< double >::digits10,
-                                                      std::numeric_limits< double >::digits10,
-                                                      "," );
-            }
-
-            //Write SC data to file
-            input_output::writeDataMapToTextFile( tempIntegrationResult,
-                                                  "WP1_Orbit" + boost::lexical_cast< std::string >( setcount )
-                                                  + "_JacobiConstant" + boost::lexical_cast< std::string >( InitialConditionsSE(setcount,4) )
-                                                  + ".dat",
-                                                  tudat_applications::getOutputPath( ),
-                                                  "",
-                                                  std::numeric_limits< double >::digits10,
-                                                  std::numeric_limits< double >::digits10,
-                                                  "," );
+            WriteToFile(tempIntegrationResult, bodyMap, filename, addSun, addEarth, addMoon);
 
             tempIntegrationResult.clear();
-            sunBarycentricStates.clear();
-            earthBarycentricStates.clear();
-            moonBarycentricStates.clear();
+
         }
-
-    }
-    else{
-        std::cerr<<"Do not start propagation."<<std::endl;
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////     WRITE TO FILE       /////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    if(orbitType2)
+    {
+        std::cerr<<"Start orbit type 2."<<std::endl;
+
+        InitialConditionsSE = CreateInitialConditionsSE(2,StepSize,3.0,3.2);
+
+        for(int setcount = 2; setcount <= InitialConditionsSE.rows() ; setcount++)
+        {
+            std::cerr<<"Start OT2 propagation " +
+                       boost::lexical_cast< std::string >( setcount )
+                       + " out of " +
+                       boost::lexical_cast< std::string >( InitialConditionsSE.rows() )
+                       + "."<<std::endl;
+
+            ///
+            /// Create initial conditions
+            ///
+
+            SC1InitialState = FrameTransformationSE(InitialConditionsSE(setcount,0),
+                                                    InitialConditionsSE(setcount,1),
+                                                    InitialConditionsSE(setcount,2),
+                                                    InitialConditionsSE(setcount,3));
+
+            systemInitialState = SC1InitialState;
+
+
+
+            ///
+            /// Create Integrator and Propagator
+            ///
+
+            PropagationStart = 0.0;
+            PropagationEnds = PropagationLength;
+
+
+            boost::shared_ptr< IntegratorSettings< > > integratorSettings;
+            integratorSettings = boost::make_shared< RungeKuttaVariableStepSizeSettings< > >
+                    (rungeKuttaVariableStepSize, PropagationStart, initStepSizeF, coefficientSet,
+                    minimumStepSizeF, maximumStepSizeF, relativeErrorTolerance, absoluteErrorTolerance );
+
+            boost::shared_ptr< TranslationalStatePropagatorSettings< > > propagatorSettings =
+                    boost::make_shared< TranslationalStatePropagatorSettings< > >
+                    (centralBodies, ModelMapSE, bodiesToPropagate, systemInitialState, PropagationEnds, cowell );
+
+            ///
+            /// Create simulation object and propagate dynamics.
+            ///
+
+            SingleArcDynamicsSimulator< > dynamicsSimulator(
+                        bodyMap, integratorSettings, propagatorSettings, true, true, false );
+
+            std::map< double, Eigen::VectorXd > tempIntegrationResult = dynamicsSimulator.getEquationsOfMotionNumericalSolution( );
+
+            double C = InitialConditionsSE(setcount,4);
+            double alpha1 = InitialConditionsSE(setcount,5);
+            double alpha2 = InitialConditionsSE(setcount,6);
+            double beta = InitialConditionsSE(setcount,7);
+            double time = InitialConditionsSE(setcount,8);
+
+            std::string filename = "orbittype2_nr=" + boost::lexical_cast< std::string >( setcount )
+                    + "_C=" + boost::lexical_cast< std::string >( C )
+                    + "_a1=" + boost::lexical_cast< std::string >( alpha1 )
+                    + "_a2=" + boost::lexical_cast< std::string >( alpha2 )
+                    + "_t=" + boost::lexical_cast< std::string >( time );
+
+            WriteToFile(tempIntegrationResult, bodyMap, filename, addSun, addEarth, addMoon);
+
+            tempIntegrationResult.clear();
+
+        }
+    }
+
+
+
 
 
 }

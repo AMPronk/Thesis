@@ -1,4 +1,8 @@
 #include "initiateconstants.h"
+#include <Tudat/SimulationSetup/tudatSimulationHeader.h>
+#include <complex>
+#include <iostream>
+#include <tuple>
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -31,3 +35,5 @@ bool InitiateConstants()
 {
     return 1;
 }
+
+

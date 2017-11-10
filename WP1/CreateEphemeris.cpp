@@ -141,7 +141,7 @@ std::tuple<AccelerationMap, std::vector< std::string >, std::vector< std::string
         }
         accelerationMap[ "Spacecraft1" ] = accelerationsOfSCSE;
         bodiesToPropagate.push_back( "Spacecraft1" );
-        centralBodies.push_back( "SSB" );
+        centralBodies.push_back( "Earth" );
     }
 
     if(SCEM){
@@ -299,15 +299,8 @@ Eigen::VectorXd InitialStateSEL2()
     //            - pow( z , 3.0 ) / 9.0
     //            + pow( z , 4.0 ) * 50.0 / 81.0;
 
-    L2Initial [xCartesianPositionIndex] = (gammaL + 1.0) * AU + 507.77269;
-    L2Initial [yCartesianVelocityIndex] = L2Initial[xCartesianPositionIndex] * 2.0 * pi / secInYear - 0.04517792301091;
-    //L2Initial [yCartesianVelocityIndex] = L2Initial[xCartesianPositionIndex] * 2.0 * pi / secInYear - 0.045177923;
-
-    std::cerr<<"GammaL is " +
-               boost::lexical_cast< std::string >( gammaL )
-               + " to get x location " +
-               boost::lexical_cast< std::string >( L2Initial [xCartesianPositionIndex] )
-               + "m."<<std::endl;
+    L2Initial [xCartesianPositionIndex] = gammaL * AU + 507.776127;
+    L2Initial [yCartesianVelocityIndex] = L2Initial[xCartesianPositionIndex] * 2.0 * pi / secInYear - 0.000448950212 ;
 
     return L2Initial;
 }
