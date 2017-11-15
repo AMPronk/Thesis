@@ -22,8 +22,8 @@ Eigen::MatrixXd CreateInitialConditionsSE(int orbitType, int sampleSize, long do
     // orbitType = 0 --> periodic orbit.                                                        alpha1 = 0 & alpha2 = 0.
     // orbitType = 1 --> asymptotic orbit, towards L2.                                          alpha1 = 0 & alpha2 =/ 0.
     // orbitType = 2 --> asymptotic orbit, away from L2.                                        alpha1 =/ 0 & alpha2 = 0.
-    // orbitType = 3 --> non-transit orbit, inside of hillsphere.                               alpha1 > 0 & alpha2 > 0.
-    // orbitType = 4 --> non-transit orbit, outside of hillsphere.                              alpha1 < 0 & alpha2 < 0.
+    // orbitType = 3 --> non-transit orbit, inside of hillsphere.                               alpha1 < 0 & alpha2 < 0.
+    // orbitType = 4 --> non-transit orbit, outside of hillsphere.                              alpha1 > 0 & alpha2 > 0.
     // orbitType = 5 --> transit orbit, into the hillsphere                                     alpha1 < 0 & alpha2 > 0.
     // orbitType = 6 --> transit orbit, out of the hillsphere                                   alpha1 > 0 & alpha2 < 0.
 
@@ -81,14 +81,14 @@ Eigen::MatrixXd CreateInitialConditionsSE(int orbitType, int sampleSize, long do
     else if(orbitType == 3)
     {
         std::cerr<<"non-transit orbit, inside hillsphere. "<<std::endl;
-        long double LowerAlpha1 = 0.0;
-        long double HigherAlpha1 = 1.0E-8;
+        long double LowerAlpha1 = -1.0E-3;
+        long double HigherAlpha1 = 0.0;
         int Alpha1Count = BetaCount;//((HigherAlpha1 - LowerAlpha1)/precision;
         alpha1.resize(Alpha1Count);
         alpha1 = Eigen::VectorXd::LinSpaced(Alpha1Count, LowerAlpha1, HigherAlpha1);
 
-        long double LowerAlpha2 = 0.0;
-        long double HigherAlpha2 = 1.0E-8;
+        long double LowerAlpha2 = -1.0E-3;
+        long double HigherAlpha2 = 0.0;
         int Alpha2Count = BetaCount;//((HigherAlpha2 - LowerAlpha2)/precision;
         alpha2.resize(Alpha2Count);
         alpha2 = Eigen::VectorXd::LinSpaced(Alpha2Count, LowerAlpha2, HigherAlpha2);
@@ -96,14 +96,14 @@ Eigen::MatrixXd CreateInitialConditionsSE(int orbitType, int sampleSize, long do
     else if(orbitType == 4)
     {
         std::cerr<<"non-transit orbit, outside hillsphere. "<<std::endl;
-        long double LowerAlpha1 = -1.0E-8;
-        long double HigherAlpha1 = 0.0;
+        long double LowerAlpha1 = 0.0;
+        long double HigherAlpha1 = 1.0E-3;
         int Alpha1Count = BetaCount;//((HigherAlpha1 - LowerAlpha1)/precision;
         alpha1.resize(Alpha1Count);
         alpha1 = Eigen::VectorXd::LinSpaced(Alpha1Count, LowerAlpha1, HigherAlpha1);
 
-        long double LowerAlpha2 = -1.0E-8;
-        long double HigherAlpha2 = 0.0;
+        long double LowerAlpha2 = 0.0;
+        long double HigherAlpha2 = 1.0E-3;
         int Alpha2Count = BetaCount;//((HigherAlpha2 - LowerAlpha2)/precision;
         alpha2.resize(Alpha2Count);
         alpha2 = Eigen::VectorXd::LinSpaced(Alpha2Count, LowerAlpha2, HigherAlpha2);
