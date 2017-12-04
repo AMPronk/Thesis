@@ -65,13 +65,17 @@ Eigen::Vector6d FrameTransformationEM(long double x, long double y, long double 
 {
     //define the distance of the L2 point from the SSB
     Eigen::Vector6d L2location = InitialStateEML2();
-    long double L2Distance = -L2location[0];
+    long double L2Distance = L2location[0];
 
     //define the speed at which the system rotates: set rotational time for the moon
-    long double rotationSpeed = 2.0 * pi / secInMonth;
+    long double rotationSpeed = 2.632517463869E-6; // 2.0 * pi / secInMonth - 2.5E-8;
     //define the angle at which the L2 point is currently placed, compared to the x-axis.
     //TODO, shouldn't be hardcode
-    long double rotationAngle = pi;
+    long double rotationAngle = 0.0;
+
+//    std::cerr<<"x = " + boost::lexical_cast< std::string >(x) + ". y = " + boost::lexical_cast< std::string >( y )
+//               + ". xdot = " + boost::lexical_cast< std::string >( xdot ) + ". ydot = " + boost::lexical_cast< std::string >( ydot )<<std::endl;
+
 
     // scale the coordinates for distance
     long double x2 = (MoonEarthDistance * x) + L2Distance;
@@ -79,6 +83,9 @@ Eigen::Vector6d FrameTransformationEM(long double x, long double y, long double 
     // scale the speeds for distance and time
     long double xdot2 = MoonEarthDistance * rotationSpeed * xdot ;
     long double ydot2 = MoonEarthDistance * rotationSpeed * ydot;
+
+//    std::cerr<<"x2 = " + boost::lexical_cast< std::string >(x2) + ". y2 = " + boost::lexical_cast< std::string >( y2 )
+//               + ". xdot2 = " + boost::lexical_cast< std::string >( xdot2 ) + ". ydot2 = " + boost::lexical_cast< std::string >( ydot2 )<<std::endl;
 
 
     // add rotation and rotational speed to get initial conditions in the earth centered frame
@@ -90,6 +97,9 @@ Eigen::Vector6d FrameTransformationEM(long double x, long double y, long double 
             rotationSpeed * (- std::sin(rotationAngle) * x2 + std::cos(rotationAngle) * y2) ;
     long double ydot3 = ydot2 * std::cos(rotationAngle) - xdot2 * std::sin(rotationAngle) -
             rotationSpeed * (- std::cos(rotationAngle) * x2 - std::sin(rotationAngle) * y2) ;
+
+//    std::cerr<<"x3 = " + boost::lexical_cast< std::string >(x3) + ". y3 = " + boost::lexical_cast< std::string >( y3 )
+//               + ". xdot3 = " + boost::lexical_cast< std::string >( xdot3 ) + ". ydot3 = " + boost::lexical_cast< std::string >( ydot3 )<<std::endl;
 
 
     //initial conditions in the earth centered frame, as used for the propagation

@@ -18,6 +18,7 @@ const long double SSBGravitationalParameter = SunGravitationalParameter + EarthG
 
 
 const long double secInYear = tudat::physical_constants::SIDEREAL_YEAR;
+const long double secInMonth = 2372380.0; //this is not the right number, but I made manual changes everywhere so I can't take it out anymore :(
 
 const long double muSE = EarthGravitationalParameter / (SunGravitationalParameter + EarthGravitationalParameter);
 const long double muEM = MoonGravitationalParameter / (EarthGravitationalParameter + MoonGravitationalParameter);
@@ -26,9 +27,9 @@ const long double muEM = MoonGravitationalParameter / (EarthGravitationalParamet
 //const long double Re = pow( SunGravitationalParameter * pow( secInYear/(2.0*pi) , 2.0 ), 1.0/3.0 );//tudat::physical_constants::ASTRONOMICAL_UNIT;
 //const long double Rs = pow( EarthGravitationalParameter * pow( secInYear/(2.0*pi) , 2.0 ), 1.0/3.0 );//tudat::physical_constants::ASTRONOMICAL_UNIT;
 const long double AU = pow( (SunGravitationalParameter + EarthGravitationalParameter ) * pow( secInYear/(2.0*pi) , 2.0 ), 1.0/3.0 );//Re + Rs;
-const long double MoonEarthDistance = 0.002570 * AU; //SMAD p962;
+const long double MoonEarthDistance = pow( (EarthGravitationalParameter + MoonGravitationalParameter ) * pow( secInMonth/(2.0*pi) , 2.0), 1.0/3.0 ); //0.002570 * AU; //SMAD p962;
 
-const long double secInMonth = MoonEarthDistance * 2.0 * pi / 1023.0;
+ //MoonEarthDistance * 2.0 * pi / 1023.0;
 
 
 bool InitiateConstants()

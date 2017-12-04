@@ -53,34 +53,63 @@ int main( )
     bool addSun = true;
     bool addEarth = true;
     bool addMoon = false;
-    bool addOlfarSE = true;
-    bool addOlfarEM = false; //TODO, script doesn't support this right now.
+    bool addOlfarSE = addSun;
+    bool addOlfarEM = addMoon; //Select EITHER addOlfarSE OR addOlfarEM -- NEVER BOTH.
 
-    bool orbitType1 = true;
-    bool orbitType2 = true;
-    bool orbitType3 = true;
-    bool orbitType4 = true;
+    bool runL2 = true;
+
+    bool orbitType1 = false;
+    bool orbitType2 = false;
+    bool orbitType3 = false;
+    bool orbitType4 = false;
     bool orbitType5 = false;
     bool orbitType6 = false;
 
     //Propagation constants used
-    const long double PropagationLength = 0.9 * tudat::physical_constants::SIDEREAL_YEAR; //cannot be more than one year!
+    double InitialStateTime = tudat::physical_constants::SIDEREAL_YEAR;
+    long double PropagationLength;
+
+    if(addOlfarSE){
+        PropagationLength = 1.0 * tudat::physical_constants::SIDEREAL_YEAR; //cannot be more than one year!
+    }
+    else if(addOlfarEM){
+        PropagationLength = 0.3 * tudat::physical_constants::SIDEREAL_YEAR; //cannot be more than one year!
+    }
 
     const numerical_integrators::RungeKuttaCoefficients::CoefficientSets coefficientSet =
             numerical_integrators::RungeKuttaCoefficients::CoefficientSets::rungeKuttaFehlberg78;
     double initStepSizeB = -1.0;
     double initStepSizeF = 1.0;
 
-    double minimumStepSizeB = -1.0E-5;
-    double maximumStepSizeB = -500.0;
-    double minimumStepSizeF = 1.0E-5;
-    double maximumStepSizeF = 500.0;
+    double minimumStepSizeB;
+    double maximumStepSizeB;
+    double minimumStepSizeF;
+    double maximumStepSizeF;
+
+    if(addOlfarSE){
+        minimumStepSizeB = -1.0;
+        maximumStepSizeB = -500.0;
+        minimumStepSizeF = 1.0;
+        maximumStepSizeF = 500.0;
+    }
+    else if(addOlfarEM){
+        minimumStepSizeB = -0.1;
+        maximumStepSizeB = -50.0;
+        minimumStepSizeF = 0.1;
+        maximumStepSizeF = 50.0;
+    }
 
     double relativeErrorTolerance = -1.0E-20;
     double absoluteErrorTolerance = -1.0E-12;
 
     //Initial Conditions Creation constants used
-    int InitCondSampleSize = 50;
+    int InitCondSampleSize = 17;
+
+    double ClowSE = 3.0;
+    double ChighSE = 3.002;
+
+    double ClowEM = 3.19;//3.195;
+    double ChighEM = 3.2;
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -88,21 +117,22 @@ int main( )
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     std::cerr<<"Start CreateEphemeris."<<std::endl;
 
-    AccelerationMap ModelMapSE;
+    AccelerationMap ModelMap;
     std::vector< std::string > bodiesToPropagate;
     std::vector< std::string > centralBodies;
     NamedBodyMap bodyMap;
 
-    auto Ephemeris = CreateEphemeris(addSun, addEarth, addMoon, addOlfarSE, addOlfarEM, 0.0, 2.0 * tudat::physical_constants::SIDEREAL_YEAR);
-    ModelMapSE = std::get<0>(Ephemeris);
+    auto Ephemeris = CreateEphemeris(addSun, addEarth, addMoon, addOlfarSE, addOlfarEM, InitialStateTime, PropagationLength);
+    ModelMap = std::get<0>(Ephemeris);
     bodiesToPropagate = std::get<1>(Ephemeris);
     centralBodies = std::get<2>(Ephemeris);
     bodyMap = std::get<3>(Ephemeris);
 
 
-    /// Create initial states of all bodies exept Olfar
+    /// Create empty initial state vectors for spacecraft
 
-    Eigen::VectorXd systemInitialState = Eigen::VectorXd(6);
+    Eigen::VectorXd SCInitialState = Eigen::VectorXd(6);
+
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -110,15 +140,23 @@ int main( )
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // TODO REMOVE
 
-    bool runtest = 1;
 
-    Eigen::VectorXd SC1InitialState = InitialStateSEL2();
+    if(addOlfarSE)
+    {
+        std::cerr<<"Start SE L2 calculation."<<std::endl;
+        SCInitialState = InitialStateSEL2();
+    }
+    else
+    {
+        std::cerr<<"Start EM L2 calculation."<<std::endl;
+        SCInitialState = InitialStateEML2();
+    }
 
-    if(runtest){
 
-        systemInitialState = SC1InitialState;
-        double PropagationStart = 0.0;
-        double PropagationEnds = 2.0 * tudat::physical_constants::SIDEREAL_YEAR;
+    if(runL2){
+
+        double PropagationStart = InitialStateTime;
+        double PropagationEnds = InitialStateTime + PropagationLength; //tudat::physical_constants::SIDEREAL_YEAR;
 
         boost::shared_ptr< IntegratorSettings< > > integratorSettingsS1;
         integratorSettingsS1 = boost::make_shared< RungeKuttaVariableStepSizeSettings< > >
@@ -127,12 +165,11 @@ int main( )
 
         boost::shared_ptr< TranslationalStatePropagatorSettings< > > propagatorSettingsS1 =
                 boost::make_shared< TranslationalStatePropagatorSettings< > >
-                (centralBodies, ModelMapSE, bodiesToPropagate, systemInitialState, PropagationEnds, cowell);
+                (centralBodies, ModelMap, bodiesToPropagate, SCInitialState, PropagationEnds, cowell);
 
         ///
         /// Create simulation object and propagate dynamics.
         ///
-        std::cerr<<"Start L2 dynamics simulator."<<std::endl;
         SingleArcDynamicsSimulator< > dynamicsSimulatorS1(
                     bodyMap, integratorSettingsS1, propagatorSettingsS1, true, true, false );
         std::map< double, Eigen::VectorXd > tempIntegrationResultS1 = dynamicsSimulatorS1.getEquationsOfMotionNumericalSolution( );
@@ -149,8 +186,7 @@ int main( )
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-    Eigen::MatrixXd InitialConditionsSE;
-    Eigen::MatrixXd InitialConditionsEM;
+    Eigen::MatrixXd InitialConditions;
     long double PropagationStart;
     long double PropagationEnds;
 
@@ -162,27 +198,42 @@ int main( )
     {
         std::cerr<<"Start orbit type 1."<<std::endl;
 
-        InitialConditionsSE = CreateInitialConditionsSE(1,InitCondSampleSize,3.0,3.2);
+        if(addOlfarSE)
+        {
+            InitialConditions = CreateInitialConditionsSE(1,InitCondSampleSize,ClowSE,ChighSE);
+        }
+        if(addOlfarEM)
+        {
+            InitialConditions = CreateInitialConditionsEM(1,InitCondSampleSize,ClowEM,ChighEM);
+        }
 
-        for(int setcount = 2; setcount <= InitialConditionsSE.rows() ; setcount++)
+
+        for(int setcount = 2; setcount <= InitialConditions.rows() ; setcount++)
         {
             std::cerr<<"Start OT1 propagation " +
                        boost::lexical_cast< std::string >( setcount )
                        + " out of " +
-                       boost::lexical_cast< std::string >( InitialConditionsSE.rows() )
+                       boost::lexical_cast< std::string >( InitialConditions.rows() )
                        + "."<<std::endl;
 
             ///
             /// Create initial conditions
             ///
 
-            SC1InitialState = FrameTransformationSE(InitialConditionsSE(setcount,0),
-                                                    InitialConditionsSE(setcount,1),
-                                                    InitialConditionsSE(setcount,2),
-                                                    InitialConditionsSE(setcount,3));
-
-            systemInitialState = SC1InitialState;
-
+            if(addOlfarSE)
+            {
+                SCInitialState = FrameTransformationSE(InitialConditions(setcount,0),
+                                                       InitialConditions(setcount,1),
+                                                       InitialConditions(setcount,2),
+                                                       InitialConditions(setcount,3));
+            }
+            if(addOlfarEM)
+            {
+                SCInitialState = FrameTransformationEM(InitialConditions(setcount,0),
+                                                       InitialConditions(setcount,1),
+                                                       InitialConditions(setcount,2),
+                                                       InitialConditions(setcount,3));
+            }
 
 
             ///
@@ -200,7 +251,7 @@ int main( )
 
             boost::shared_ptr< TranslationalStatePropagatorSettings< > > propagatorSettings =
                     boost::make_shared< TranslationalStatePropagatorSettings< > >
-                    (centralBodies, ModelMapSE, bodiesToPropagate, systemInitialState, PropagationEnds, cowell );
+                    (centralBodies, ModelMap, bodiesToPropagate, SCInitialState, PropagationEnds, cowell );
 
             ///
             /// Create simulation object and propagate dynamics.
@@ -211,19 +262,20 @@ int main( )
 
             std::map< double, Eigen::VectorXd > tempIntegrationResult = dynamicsSimulator.getEquationsOfMotionNumericalSolution( );
 
-            double C = InitialConditionsSE(setcount,4);
-            double alpha1 = InitialConditionsSE(setcount,5);
-            double alpha2 = InitialConditionsSE(setcount,6);
-            double beta = InitialConditionsSE(setcount,7);
-            double time = InitialConditionsSE(setcount,8);
+            double C = InitialConditions(setcount,4);
+            double alpha1 = InitialConditions(setcount,5);
+            double alpha2 = InitialConditions(setcount,6);
+            double beta = InitialConditions(setcount,7);
+            double time = InitialConditions(setcount,8);
 
             std::string filename = "orbittype1_nr=" + boost::lexical_cast< std::string >( setcount )
                     + "_C=" + boost::lexical_cast< std::string >( C )
                     + "_a1=" + boost::lexical_cast< std::string >( alpha1 )
                     + "_a2=" + boost::lexical_cast< std::string >( alpha2 )
+                    + "_b=" + boost::lexical_cast< std::string >( beta )
                     + "_t=" + boost::lexical_cast< std::string >( time );
 
-            WriteToFile(tempIntegrationResult, bodyMap, filename, addSun, addEarth, addMoon);
+            WriteToFile(tempIntegrationResult, bodyMap, filename, false, addEarth, addMoon);
 
             tempIntegrationResult.clear();
 
@@ -234,27 +286,41 @@ int main( )
     {
         std::cerr<<"Start orbit type 2."<<std::endl;
 
-        InitialConditionsSE = CreateInitialConditionsSE(2,InitCondSampleSize,3.0,3.2);
+        if(addOlfarSE)
+        {
+            InitialConditions = CreateInitialConditionsSE(2,InitCondSampleSize,ClowSE,ChighSE);
+        }
+        if(addOlfarEM)
+        {
+            InitialConditions = CreateInitialConditionsEM(2,InitCondSampleSize,ClowEM,ChighEM);
+        }
 
-        for(int setcount = 2; setcount <= InitialConditionsSE.rows() ; setcount++)
+        for(int setcount = 2; setcount <= InitialConditions.rows() ; setcount++)
         {
             std::cerr<<"Start OT2 propagation " +
                        boost::lexical_cast< std::string >( setcount )
                        + " out of " +
-                       boost::lexical_cast< std::string >( InitialConditionsSE.rows() )
+                       boost::lexical_cast< std::string >( InitialConditions.rows() )
                        + "."<<std::endl;
 
             ///
             /// Create initial conditions
             ///
 
-            SC1InitialState = FrameTransformationSE(InitialConditionsSE(setcount,0),
-                                                    InitialConditionsSE(setcount,1),
-                                                    InitialConditionsSE(setcount,2),
-                                                    InitialConditionsSE(setcount,3));
-
-            systemInitialState = SC1InitialState;
-
+            if(addOlfarSE)
+            {
+                SCInitialState = FrameTransformationSE(InitialConditions(setcount,0),
+                                                       InitialConditions(setcount,1),
+                                                       InitialConditions(setcount,2),
+                                                       InitialConditions(setcount,3));
+            }
+            if(addOlfarEM)
+            {
+                SCInitialState = FrameTransformationEM(InitialConditions(setcount,0),
+                                                       InitialConditions(setcount,1),
+                                                       InitialConditions(setcount,2),
+                                                       InitialConditions(setcount,3));
+            }
 
 
             ///
@@ -268,11 +334,11 @@ int main( )
             boost::shared_ptr< IntegratorSettings< > > integratorSettings;
             integratorSettings = boost::make_shared< RungeKuttaVariableStepSizeSettings< > >
                     (rungeKuttaVariableStepSize, PropagationStart, initStepSizeF, coefficientSet,
-                    minimumStepSizeF, maximumStepSizeF, relativeErrorTolerance, absoluteErrorTolerance );
+                     minimumStepSizeF, maximumStepSizeF, relativeErrorTolerance, absoluteErrorTolerance );
 
             boost::shared_ptr< TranslationalStatePropagatorSettings< > > propagatorSettings =
                     boost::make_shared< TranslationalStatePropagatorSettings< > >
-                    (centralBodies, ModelMapSE, bodiesToPropagate, systemInitialState, PropagationEnds, cowell );
+                    (centralBodies, ModelMap, bodiesToPropagate, SCInitialState, PropagationEnds, cowell );
 
             ///
             /// Create simulation object and propagate dynamics.
@@ -283,19 +349,20 @@ int main( )
 
             std::map< double, Eigen::VectorXd > tempIntegrationResult = dynamicsSimulator.getEquationsOfMotionNumericalSolution( );
 
-            double C = InitialConditionsSE(setcount,4);
-            double alpha1 = InitialConditionsSE(setcount,5);
-            double alpha2 = InitialConditionsSE(setcount,6);
-            double beta = InitialConditionsSE(setcount,7);
-            double time = InitialConditionsSE(setcount,8);
+            double C = InitialConditions(setcount,4);
+            double alpha1 = InitialConditions(setcount,5);
+            double alpha2 = InitialConditions(setcount,6);
+            double beta = InitialConditions(setcount,7);
+            double time = InitialConditions(setcount,8);
 
             std::string filename = "orbittype2_nr=" + boost::lexical_cast< std::string >( setcount )
                     + "_C=" + boost::lexical_cast< std::string >( C )
                     + "_a1=" + boost::lexical_cast< std::string >( alpha1 )
                     + "_a2=" + boost::lexical_cast< std::string >( alpha2 )
+                    + "_b=" + boost::lexical_cast< std::string >( beta )
                     + "_t=" + boost::lexical_cast< std::string >( time );
 
-            WriteToFile(tempIntegrationResult, bodyMap, filename, addSun, addEarth, addMoon);
+            WriteToFile(tempIntegrationResult, bodyMap, filename, false, addEarth, addMoon);
 
             tempIntegrationResult.clear();
 
@@ -306,28 +373,41 @@ int main( )
     {
         std::cerr<<"Start orbit type 3."<<std::endl;
 
-        InitialConditionsSE = CreateInitialConditionsSE(3,0.5*InitCondSampleSize,3.0,3.2);
+        if(addOlfarSE)
+        {
+            InitialConditions = CreateInitialConditionsSE(3,InitCondSampleSize,ClowSE,ChighSE);
+        }
+        if(addOlfarEM)
+        {
+            InitialConditions = CreateInitialConditionsEM(3,InitCondSampleSize,ClowEM,ChighEM);
+        }
 
-        for(int setcount = 2; setcount <= InitialConditionsSE.rows() ; setcount++)
+        for(int setcount = 2; setcount <= InitialConditions.rows() ; setcount++)
         {
             std::cerr<<"Start OT3 propagation " +
                        boost::lexical_cast< std::string >( setcount )
                        + " out of " +
-                       boost::lexical_cast< std::string >( InitialConditionsSE.rows() )
+                       boost::lexical_cast< std::string >( InitialConditions.rows() )
                        + "."<<std::endl;
 
             ///
             /// Create initial conditions
             ///
 
-            SC1InitialState = FrameTransformationSE(InitialConditionsSE(setcount,0),
-                                                    InitialConditionsSE(setcount,1),
-                                                    InitialConditionsSE(setcount,2),
-                                                    InitialConditionsSE(setcount,3));
-
-            systemInitialState = SC1InitialState;
-
-
+            if(addOlfarSE)
+            {
+                SCInitialState = FrameTransformationSE(InitialConditions(setcount,0),
+                                                       InitialConditions(setcount,1),
+                                                       InitialConditions(setcount,2),
+                                                       InitialConditions(setcount,3));
+            }
+            if(addOlfarEM)
+            {
+                SCInitialState = FrameTransformationEM(InitialConditions(setcount,0),
+                                                       InitialConditions(setcount,1),
+                                                       InitialConditions(setcount,2),
+                                                       InitialConditions(setcount,3));
+            }
 
             ///
             /// Create Integrator and Propagator
@@ -345,7 +425,7 @@ int main( )
 
             boost::shared_ptr< TranslationalStatePropagatorSettings< > > propagatorSettingsF =
                     boost::make_shared< TranslationalStatePropagatorSettings< > >
-                    (centralBodies, ModelMapSE, bodiesToPropagate, systemInitialState, PropagationEndsF, cowell );
+                    (centralBodies, ModelMap, bodiesToPropagate, SCInitialState, PropagationEndsF, cowell );
 
             ///
             /// Create simulation object and propagate dynamics.
@@ -356,19 +436,20 @@ int main( )
 
             std::map< double, Eigen::VectorXd > tempIntegrationResult = dynamicsSimulatorF.getEquationsOfMotionNumericalSolution( );
 
-            double C = InitialConditionsSE(setcount,4);
-            double alpha1 = InitialConditionsSE(setcount,5);
-            double alpha2 = InitialConditionsSE(setcount,6);
-            double beta = InitialConditionsSE(setcount,7);
-            double time = InitialConditionsSE(setcount,8);
+            double C = InitialConditions(setcount,4);
+            double alpha1 = InitialConditions(setcount,5);
+            double alpha2 = InitialConditions(setcount,6);
+            double beta = InitialConditions(setcount,7);
+            double time = InitialConditions(setcount,8);
 
             std::string filenameF = "orbittype3_nr=" + boost::lexical_cast< std::string >( setcount )
                     + "F_C=" + boost::lexical_cast< std::string >( C )
                     + "_a1=" + boost::lexical_cast< std::string >( alpha1 )
                     + "_a2=" + boost::lexical_cast< std::string >( alpha2 )
+                    + "_b=" + boost::lexical_cast< std::string >( beta )
                     + "_t=" + boost::lexical_cast< std::string >( time );
 
-            WriteToFile(tempIntegrationResult, bodyMap, filenameF, addSun, addEarth, addMoon);
+            WriteToFile(tempIntegrationResult, bodyMap, filenameF, false, addEarth, addMoon);
 
             tempIntegrationResult.clear();
 
@@ -380,7 +461,7 @@ int main( )
 
             boost::shared_ptr< TranslationalStatePropagatorSettings< > > propagatorSettingsB =
                     boost::make_shared< TranslationalStatePropagatorSettings< > >
-                    (centralBodies, ModelMapSE, bodiesToPropagate, systemInitialState, PropagationEndsB, cowell );
+                    (centralBodies, ModelMap, bodiesToPropagate, SCInitialState, PropagationEndsB, cowell );
 
             ///
             /// Create simulation object and propagate dynamics.
@@ -395,9 +476,10 @@ int main( )
                     + "B_C=" + boost::lexical_cast< std::string >( C )
                     + "_a1=" + boost::lexical_cast< std::string >( alpha1 )
                     + "_a2=" + boost::lexical_cast< std::string >( alpha2 )
+                    + "_b=" + boost::lexical_cast< std::string >( beta )
                     + "_t=" + boost::lexical_cast< std::string >( time );
 
-            WriteToFile(tempIntegrationResult, bodyMap, filenameB, addSun, addEarth, addMoon);
+            WriteToFile(tempIntegrationResult, bodyMap, filenameB, false, addEarth, addMoon);
 
             tempIntegrationResult.clear();
 
@@ -408,28 +490,41 @@ int main( )
     {
         std::cerr<<"Start orbit type 4."<<std::endl;
 
-        InitialConditionsSE = CreateInitialConditionsSE(4,0.5*InitCondSampleSize,3.0,3.2);
+        if(addOlfarSE)
+        {
+            InitialConditions = CreateInitialConditionsSE(4,InitCondSampleSize,ClowSE,ChighSE);
+        }
+        if(addOlfarEM)
+        {
+            InitialConditions = CreateInitialConditionsEM(4,InitCondSampleSize,ClowEM,ChighEM);
+        }
 
-        for(int setcount = 2; setcount <= InitialConditionsSE.rows() ; setcount++)
+        for(int setcount = 2; setcount <= InitialConditions.rows() ; setcount++)
         {
             std::cerr<<"Start OT4 propagation " +
                        boost::lexical_cast< std::string >( setcount )
                        + " out of " +
-                       boost::lexical_cast< std::string >( InitialConditionsSE.rows() )
+                       boost::lexical_cast< std::string >( InitialConditions.rows() )
                        + "."<<std::endl;
 
             ///
             /// Create initial conditions
             ///
 
-            SC1InitialState = FrameTransformationSE(InitialConditionsSE(setcount,0),
-                                                    InitialConditionsSE(setcount,1),
-                                                    InitialConditionsSE(setcount,2),
-                                                    InitialConditionsSE(setcount,3));
-
-            systemInitialState = SC1InitialState;
-
-
+            if(addOlfarSE)
+            {
+                SCInitialState = FrameTransformationSE(InitialConditions(setcount,0),
+                                                       InitialConditions(setcount,1),
+                                                       InitialConditions(setcount,2),
+                                                       InitialConditions(setcount,3));
+            }
+            if(addOlfarEM)
+            {
+                SCInitialState = FrameTransformationEM(InitialConditions(setcount,0),
+                                                       InitialConditions(setcount,1),
+                                                       InitialConditions(setcount,2),
+                                                       InitialConditions(setcount,3));
+            }
 
             ///
             /// Create Integrator and Propagator
@@ -447,7 +542,7 @@ int main( )
 
             boost::shared_ptr< TranslationalStatePropagatorSettings< > > propagatorSettingsF =
                     boost::make_shared< TranslationalStatePropagatorSettings< > >
-                    (centralBodies, ModelMapSE, bodiesToPropagate, systemInitialState, PropagationEndsF, cowell );
+                    (centralBodies, ModelMap, bodiesToPropagate, SCInitialState, PropagationEndsF, cowell );
 
             ///
             /// Create simulation object and propagate dynamics.
@@ -458,19 +553,20 @@ int main( )
 
             std::map< double, Eigen::VectorXd > tempIntegrationResult = dynamicsSimulatorF.getEquationsOfMotionNumericalSolution( );
 
-            double C = InitialConditionsSE(setcount,4);
-            double alpha1 = InitialConditionsSE(setcount,5);
-            double alpha2 = InitialConditionsSE(setcount,6);
-            double beta = InitialConditionsSE(setcount,7);
-            double time = InitialConditionsSE(setcount,8);
+            double C = InitialConditions(setcount,4);
+            double alpha1 = InitialConditions(setcount,5);
+            double alpha2 = InitialConditions(setcount,6);
+            double beta = InitialConditions(setcount,7);
+            double time = InitialConditions(setcount,8);
 
             std::string filenameF = "orbittype4_nr=" + boost::lexical_cast< std::string >( setcount )
                     + "F_C=" + boost::lexical_cast< std::string >( C )
                     + "_a1=" + boost::lexical_cast< std::string >( alpha1 )
                     + "_a2=" + boost::lexical_cast< std::string >( alpha2 )
+                    + "_b=" + boost::lexical_cast< std::string >( beta )
                     + "_t=" + boost::lexical_cast< std::string >( time );
 
-            WriteToFile(tempIntegrationResult, bodyMap, filenameF, addSun, addEarth, addMoon);
+            WriteToFile(tempIntegrationResult, bodyMap, filenameF, false, addEarth, addMoon);
 
             tempIntegrationResult.clear();
 
@@ -482,7 +578,7 @@ int main( )
 
             boost::shared_ptr< TranslationalStatePropagatorSettings< > > propagatorSettingsB =
                     boost::make_shared< TranslationalStatePropagatorSettings< > >
-                    (centralBodies, ModelMapSE, bodiesToPropagate, systemInitialState, PropagationEndsB, cowell );
+                    (centralBodies, ModelMap, bodiesToPropagate, SCInitialState, PropagationEndsB, cowell );
 
             ///
             /// Create simulation object and propagate dynamics.
@@ -497,14 +593,250 @@ int main( )
                     + "B_C=" + boost::lexical_cast< std::string >( C )
                     + "_a1=" + boost::lexical_cast< std::string >( alpha1 )
                     + "_a2=" + boost::lexical_cast< std::string >( alpha2 )
+                    + "_b=" + boost::lexical_cast< std::string >( beta )
                     + "_t=" + boost::lexical_cast< std::string >( time );
 
-            WriteToFile(tempIntegrationResult, bodyMap, filenameB, addSun, addEarth, addMoon);
+            WriteToFile(tempIntegrationResult, bodyMap, filenameB, false, addEarth, addMoon);
 
             tempIntegrationResult.clear();
 
         }
     }
+
+    if(orbitType5)
+    {
+        std::cerr<<"Start orbit type 5."<<std::endl;
+
+        if(addOlfarSE)
+        {
+            InitialConditions = CreateInitialConditionsSE(5,InitCondSampleSize,ClowSE,ChighSE);
+        }
+        if(addOlfarEM)
+        {
+            InitialConditions = CreateInitialConditionsEM(5,InitCondSampleSize,ClowEM,ChighEM);
+        }
+
+        for(int setcount = 2; setcount <= InitialConditions.rows() ; setcount++)
+        {
+            std::cerr<<"Start OT5 propagation " +
+                       boost::lexical_cast< std::string >( setcount )
+                       + " out of " +
+                       boost::lexical_cast< std::string >( InitialConditions.rows() )
+                       + "."<<std::endl;
+
+            ///
+            /// Create initial conditions
+            ///
+
+            if(addOlfarSE)
+            {
+                SCInitialState = FrameTransformationSE(InitialConditions(setcount,0),
+                                                       InitialConditions(setcount,1),
+                                                       InitialConditions(setcount,2),
+                                                       InitialConditions(setcount,3));
+            }
+            if(addOlfarEM)
+            {
+                SCInitialState = FrameTransformationEM(InitialConditions(setcount,0),
+                                                       InitialConditions(setcount,1),
+                                                       InitialConditions(setcount,2),
+                                                       InitialConditions(setcount,3));
+            }
+
+            ///
+            /// Create Integrator and Propagator
+            ///
+
+            PropagationStart = tudat::physical_constants::SIDEREAL_YEAR;
+            double PropagationEndsB = tudat::physical_constants::SIDEREAL_YEAR - 0.5 * PropagationLength;
+            double PropagationEndsF = tudat::physical_constants::SIDEREAL_YEAR + 0.5 * PropagationLength;
+
+            // START FORWARD INTEGRATION
+            boost::shared_ptr< IntegratorSettings< > > integratorSettingsF;
+            integratorSettingsF = boost::make_shared< RungeKuttaVariableStepSizeSettings< > >
+                    (rungeKuttaVariableStepSize, PropagationStart, initStepSizeF, coefficientSet,
+                     minimumStepSizeF, maximumStepSizeF, relativeErrorTolerance, absoluteErrorTolerance );
+
+            boost::shared_ptr< TranslationalStatePropagatorSettings< > > propagatorSettingsF =
+                    boost::make_shared< TranslationalStatePropagatorSettings< > >
+                    (centralBodies, ModelMap, bodiesToPropagate, SCInitialState, PropagationEndsF, cowell );
+
+            ///
+            /// Create simulation object and propagate dynamics.
+            ///
+
+            SingleArcDynamicsSimulator< > dynamicsSimulatorF(
+                        bodyMap, integratorSettingsF, propagatorSettingsF, true, true, false );
+
+            std::map< double, Eigen::VectorXd > tempIntegrationResult = dynamicsSimulatorF.getEquationsOfMotionNumericalSolution( );
+
+            double C = InitialConditions(setcount,4);
+            double alpha1 = InitialConditions(setcount,5);
+            double alpha2 = InitialConditions(setcount,6);
+            double beta = InitialConditions(setcount,7);
+            double time = InitialConditions(setcount,8);
+
+            std::string filenameF = "orbittype5_nr=" + boost::lexical_cast< std::string >( setcount )
+                    + "F_C=" + boost::lexical_cast< std::string >( C )
+                    + "_a1=" + boost::lexical_cast< std::string >( alpha1 )
+                    + "_a2=" + boost::lexical_cast< std::string >( alpha2 )
+                    + "_b=" + boost::lexical_cast< std::string >( beta )
+                    + "_t=" + boost::lexical_cast< std::string >( time );
+
+            WriteToFile(tempIntegrationResult, bodyMap, filenameF, false, addEarth, addMoon);
+
+            tempIntegrationResult.clear();
+
+            // START BACKWARDS INTEGRATION
+            boost::shared_ptr< IntegratorSettings< > > integratorSettingsB;
+            integratorSettingsB = boost::make_shared< RungeKuttaVariableStepSizeSettings< > >
+                    (rungeKuttaVariableStepSize, PropagationStart, initStepSizeB, coefficientSet,
+                     minimumStepSizeB, maximumStepSizeB, relativeErrorTolerance, absoluteErrorTolerance );
+
+            boost::shared_ptr< TranslationalStatePropagatorSettings< > > propagatorSettingsB =
+                    boost::make_shared< TranslationalStatePropagatorSettings< > >
+                    (centralBodies, ModelMap, bodiesToPropagate, SCInitialState, PropagationEndsB, cowell );
+
+            ///
+            /// Create simulation object and propagate dynamics.
+            ///
+
+            SingleArcDynamicsSimulator< > dynamicsSimulatorB(
+                        bodyMap, integratorSettingsB, propagatorSettingsB, true, true, false );
+
+            tempIntegrationResult = dynamicsSimulatorB.getEquationsOfMotionNumericalSolution( );
+
+            std::string filenameB = "orbittype5_nr=" + boost::lexical_cast< std::string >( setcount )
+                    + "B_C=" + boost::lexical_cast< std::string >( C )
+                    + "_a1=" + boost::lexical_cast< std::string >( alpha1 )
+                    + "_a2=" + boost::lexical_cast< std::string >( alpha2 )
+                    + "_b=" + boost::lexical_cast< std::string >( beta )
+                    + "_t=" + boost::lexical_cast< std::string >( time );
+
+            WriteToFile(tempIntegrationResult, bodyMap, filenameB, false, addEarth, addMoon);
+
+            tempIntegrationResult.clear();
+
+        }
+    }
+
+    if(orbitType6)
+    {
+        std::cerr<<"Start orbit type 6."<<std::endl;
+
+        if(addOlfarSE)
+        {
+            InitialConditions = CreateInitialConditionsSE(6,InitCondSampleSize,ClowSE,ChighSE);
+        }
+        if(addOlfarEM)
+        {
+            InitialConditions = CreateInitialConditionsEM(6,InitCondSampleSize,ClowEM,ChighEM);
+        }
+
+        for(int setcount = 2; setcount <= InitialConditions.rows() ; setcount++)
+        {
+            std::cerr<<"Start OT6 propagation " +
+                       boost::lexical_cast< std::string >( setcount )
+                       + " out of " +
+                       boost::lexical_cast< std::string >( InitialConditions.rows() )
+                       + "."<<std::endl;
+
+            ///
+            /// Create initial conditions
+            ///
+
+            if(addOlfarSE)
+            {
+                SCInitialState = FrameTransformationSE(InitialConditions(setcount,0),
+                                                       InitialConditions(setcount,1),
+                                                       InitialConditions(setcount,2),
+                                                       InitialConditions(setcount,3));
+            }
+            if(addOlfarEM)
+            {
+                SCInitialState = FrameTransformationEM(InitialConditions(setcount,0),
+                                                       InitialConditions(setcount,1),
+                                                       InitialConditions(setcount,2),
+                                                       InitialConditions(setcount,3));
+            }
+
+            ///
+            /// Create Integrator and Propagator
+            ///
+
+            PropagationStart = tudat::physical_constants::SIDEREAL_YEAR;
+            double PropagationEndsB = tudat::physical_constants::SIDEREAL_YEAR - 0.5 * PropagationLength;
+            double PropagationEndsF = tudat::physical_constants::SIDEREAL_YEAR + 0.5 * PropagationLength;
+
+            // START FORWARD INTEGRATION
+            boost::shared_ptr< IntegratorSettings< > > integratorSettingsF;
+            integratorSettingsF = boost::make_shared< RungeKuttaVariableStepSizeSettings< > >
+                    (rungeKuttaVariableStepSize, PropagationStart, initStepSizeF, coefficientSet,
+                     minimumStepSizeF, maximumStepSizeF, relativeErrorTolerance, absoluteErrorTolerance );
+
+            boost::shared_ptr< TranslationalStatePropagatorSettings< > > propagatorSettingsF =
+                    boost::make_shared< TranslationalStatePropagatorSettings< > >
+                    (centralBodies, ModelMap, bodiesToPropagate, SCInitialState, PropagationEndsF, cowell );
+
+            ///
+            /// Create simulation object and propagate dynamics.
+            ///
+
+            SingleArcDynamicsSimulator< > dynamicsSimulatorF(
+                        bodyMap, integratorSettingsF, propagatorSettingsF, true, true, false );
+
+            std::map< double, Eigen::VectorXd > tempIntegrationResult = dynamicsSimulatorF.getEquationsOfMotionNumericalSolution( );
+
+            double C = InitialConditions(setcount,4);
+            double alpha1 = InitialConditions(setcount,5);
+            double alpha2 = InitialConditions(setcount,6);
+            double beta = InitialConditions(setcount,7);
+            double time = InitialConditions(setcount,8);
+
+            std::string filenameF = "orbittype6_nr=" + boost::lexical_cast< std::string >( setcount )
+                    + "F_C=" + boost::lexical_cast< std::string >( C )
+                    + "_a1=" + boost::lexical_cast< std::string >( alpha1 )
+                    + "_a2=" + boost::lexical_cast< std::string >( alpha2 )
+                    + "_b=" + boost::lexical_cast< std::string >( beta )
+                    + "_t=" + boost::lexical_cast< std::string >( time );
+
+            WriteToFile(tempIntegrationResult, bodyMap, filenameF, false, addEarth, addMoon);
+
+            tempIntegrationResult.clear();
+
+            // START BACKWARDS INTEGRATION
+            boost::shared_ptr< IntegratorSettings< > > integratorSettingsB;
+            integratorSettingsB = boost::make_shared< RungeKuttaVariableStepSizeSettings< > >
+                    (rungeKuttaVariableStepSize, PropagationStart, initStepSizeB, coefficientSet,
+                     minimumStepSizeB, maximumStepSizeB, relativeErrorTolerance, absoluteErrorTolerance );
+
+            boost::shared_ptr< TranslationalStatePropagatorSettings< > > propagatorSettingsB =
+                    boost::make_shared< TranslationalStatePropagatorSettings< > >
+                    (centralBodies, ModelMap, bodiesToPropagate, SCInitialState, PropagationEndsB, cowell );
+
+            ///
+            /// Create simulation object and propagate dynamics.
+            ///
+
+            SingleArcDynamicsSimulator< > dynamicsSimulatorB(
+                        bodyMap, integratorSettingsB, propagatorSettingsB, true, true, false );
+
+            tempIntegrationResult = dynamicsSimulatorB.getEquationsOfMotionNumericalSolution( );
+
+            std::string filenameB = "orbittype6_nr=" + boost::lexical_cast< std::string >( setcount )
+                    + "B_C=" + boost::lexical_cast< std::string >( C )
+                    + "_a1=" + boost::lexical_cast< std::string >( alpha1 )
+                    + "_a2=" + boost::lexical_cast< std::string >( alpha2 )
+                    + "_b=" + boost::lexical_cast< std::string >( beta )
+                    + "_t=" + boost::lexical_cast< std::string >( time );
+
+            WriteToFile(tempIntegrationResult, bodyMap, filenameB, false, addEarth, addMoon);
+
+            tempIntegrationResult.clear();
+
+        }
+    }
+
 
 
 

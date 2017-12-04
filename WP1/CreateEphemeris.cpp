@@ -23,7 +23,7 @@ using namespace tudat::ephemerides;
 using namespace tudat::interpolators;
 using namespace tudat::basic_astrodynamics;
 
-std::tuple<AccelerationMap, std::vector< std::string >, std::vector< std::string >, NamedBodyMap> CreateEphemeris(bool sun, bool earth, bool moon, bool SCSE, bool SCEM, double PropagationStart, double PropagationEnd)
+std::tuple<AccelerationMap, std::vector< std::string >, std::vector< std::string >, NamedBodyMap> CreateEphemeris(bool sun, bool earth, bool moon, bool SCSE, bool SCEM, double InitTime, double PropagationLength)
 {
 
     NamedBodyMap bodyMap;
@@ -44,7 +44,7 @@ std::tuple<AccelerationMap, std::vector< std::string >, std::vector< std::string
         bodiesToCreate.push_back( "Moon" );
     }
 
-    bodySettings = getDefaultBodySettings( bodiesToCreate, PropagationStart - 3000.0, PropagationEnd + 3000.0 );
+    bodySettings = getDefaultBodySettings( bodiesToCreate, InitTime - PropagationLength - 3000.0, InitTime + PropagationLength + 3000.0 );
 
 
     if(sun)
@@ -77,7 +77,7 @@ std::tuple<AccelerationMap, std::vector< std::string >, std::vector< std::string
         EarthInitialStateKeplerian( trueAnomalyIndex ) = 0.0;
 
         bodySettings [ "Earth" ]-> ephemerisSettings = boost::make_shared< KeplerEphemerisSettings >(
-                    EarthInitialStateKeplerian, PropagationStart, SunGravitationalParameter, "SSB", "J2000" );
+                    EarthInitialStateKeplerian, InitTime, SunGravitationalParameter, "SSB", "J2000" );
         bodySettings [ "Earth" ]-> gravityFieldSettings = boost::make_shared< CentralGravityFieldSettings >( EarthGravitationalParameter );
         bodySettings [ "Earth" ]-> atmosphereSettings = NULL;
         bodySettings [ "Earth" ]-> rotationModelSettings = NULL;
@@ -92,10 +92,10 @@ std::tuple<AccelerationMap, std::vector< std::string >, std::vector< std::string
         MoonInitialStateKeplerian( inclinationIndex) = 0.0;
         MoonInitialStateKeplerian( argumentOfPeriapsisIndex) = 0.0;
         MoonInitialStateKeplerian( longitudeOfAscendingNodeIndex) = 0.0;
-        MoonInitialStateKeplerian( trueAnomalyIndex ) = pi;
+        MoonInitialStateKeplerian( trueAnomalyIndex ) = 0.0;
 
         bodySettings [ "Moon" ]-> ephemerisSettings = boost::make_shared< KeplerEphemerisSettings >(
-                    MoonInitialStateKeplerian, PropagationStart, EarthGravitationalParameter, "SSB", "J2000" );
+                    MoonInitialStateKeplerian, InitTime, EarthGravitationalParameter, "SSB", "J2000" );
         bodySettings [ "Moon" ]-> gravityFieldSettings = boost::make_shared< CentralGravityFieldSettings >( MoonGravitationalParameter );
         bodySettings [ "Moon" ]-> atmosphereSettings = NULL;
         bodySettings [ "Moon" ]-> rotationModelSettings = NULL;
@@ -155,7 +155,7 @@ std::tuple<AccelerationMap, std::vector< std::string >, std::vector< std::string
         }
         accelerationMap[ "Spacecraft2" ] = accelerationsOfSCEM;
         bodiesToPropagate.push_back( "Spacecraft2" );
-        centralBodies.push_back( "Earth" );
+        centralBodies.push_back( "Moon" );
     }
 
     // Create acceleration models and propagation settings.
@@ -187,32 +187,8 @@ Eigen::VectorXd CreateEphemerisInitialState(bool sun, bool earth, bool moon)
     EarthInitialState [yCartesianVelocityIndex] = EarthInitialState[xCartesianPositionIndex] * 2.0 * pi / (secInYear);
     EarthInitialState [zCartesianVelocityIndex] = 0.0;
 
-    //    Eigen::Vector6d SunInitialStateKeplerian;
-    //    SunInitialStateKeplerian( semiMajorAxisIndex) = muSE * AU;
-    //    SunInitialStateKeplerian( eccentricityIndex) = 0.0;
-    //    SunInitialStateKeplerian( inclinationIndex) = 0.0;
-    //    SunInitialStateKeplerian( argumentOfPeriapsisIndex) = 0.0;
-    //    SunInitialStateKeplerian( longitudeOfAscendingNodeIndex) = 0.0;
-    //    SunInitialStateKeplerian( trueAnomalyIndex ) = pi;
-
-    //    Eigen::Vector6d SunInitialState = convertKeplerianToCartesianElements(
-    //                SunInitialStateKeplerian,
-    //                (double)SunGravitationalParameter + (double)EarthGravitationalParameter );
-
-    //    Eigen::Vector6d EarthInitialStateKeplerian;
-    //    EarthInitialStateKeplerian( semiMajorAxisIndex) = (1.0 - muSE) * AU;
-    //    EarthInitialStateKeplerian( eccentricityIndex) = 0.0;
-    //    EarthInitialStateKeplerian( inclinationIndex) = 0.0;
-    //    EarthInitialStateKeplerian( argumentOfPeriapsisIndex) = 0.0;
-    //    EarthInitialStateKeplerian( longitudeOfAscendingNodeIndex) = 0.0;
-    //    EarthInitialStateKeplerian( trueAnomalyIndex ) = 0.0;
-
-    //    Eigen::Vector6d EarthInitialState = convertKeplerianToCartesianElements(
-    //                EarthInitialStateKeplerian,
-    //                (double)SunGravitationalParameter + (double)EarthGravitationalParameter );
-
     Eigen::Vector6d MoonInitialState;
-    MoonInitialState [xCartesianPositionIndex] = - MoonEarthDistance;
+    MoonInitialState [xCartesianPositionIndex] = MoonEarthDistance;
     MoonInitialState [yCartesianPositionIndex] = 0.0;
     MoonInitialState [zCartesianPositionIndex] = 0.0;
     MoonInitialState [xCartesianVelocityIndex] = 0.0;
@@ -270,9 +246,13 @@ Eigen::VectorXd CreateEphemerisInitialState(bool sun, bool earth, bool moon)
 
 Eigen::VectorXd InitialStateSEL2()
 {
-    Eigen::VectorXd earthInitial = CreateEphemerisInitialState(false,true,false);
-
-    Eigen::VectorXd L2Initial = earthInitial;
+    Eigen::Vector6d L2Initial;
+    L2Initial(0) = 0.0;
+    L2Initial(1) = 0.0;
+    L2Initial(2) = 0.0;
+    L2Initial(3) = 0.0;
+    L2Initial(4) = 0.0;
+    L2Initial(5) = 0.0;
 
     // Create object containing the functions.
     boost::shared_ptr< LibrationPointLocationFunction2SE > LibrationPointLocationFunction = boost::make_shared< LibrationPointLocationFunction2SE >( 1 );
@@ -289,16 +269,6 @@ Eigen::VectorXd InitialStateSEL2()
     long double gammaL = newtonRaphson.execute( LibrationPointLocationFunction, LibrationPointLocationFunction->getTrueRootLocation() );
 
 
-    //    long double alpha = muSE / (1.0 - muSE );
-    //    long double beta = pow ( alpha / 3.0, 1.0/3.0 );
-    //    long double gammaL= beta + pow( beta, 2.0 ) / 3.0 - pow( beta, 3.0 ) / 9.0 - pow( beta, 4.0 ) * 31.0 / 81.0;
-
-    //    long double z = pow( muSE / 3.0, 1.0/3.0 );
-    //    long double gammaL = z
-    //            + pow( z , 2.0 ) / 3.0
-    //            - pow( z , 3.0 ) / 9.0
-    //            + pow( z , 4.0 ) * 50.0 / 81.0;
-
     L2Initial [xCartesianPositionIndex] = gammaL * AU + 507.776127;
     L2Initial [yCartesianVelocityIndex] = L2Initial[xCartesianPositionIndex] * 2.0 * pi / secInYear - 0.000448950212 ;
 
@@ -307,9 +277,13 @@ Eigen::VectorXd InitialStateSEL2()
 
 Eigen::VectorXd InitialStateEML2()
 {
-    Eigen::VectorXd moonInitial = CreateEphemerisInitialState(false,false,true);
-
-    Eigen::VectorXd L2Initial = moonInitial;
+    Eigen::Vector6d L2Initial;
+    L2Initial(0) = 0.0;
+    L2Initial(1) = 0.0;
+    L2Initial(2) = 0.0;
+    L2Initial(3) = 0.0;
+    L2Initial(4) = 0.0;
+    L2Initial(5) = 0.0;
 
     // Create object containing the functions.
     boost::shared_ptr< LibrationPointLocationFunction2EM > LibrationPointLocationFunction = boost::make_shared< LibrationPointLocationFunction2EM >( 1 );
@@ -323,10 +297,10 @@ Eigen::VectorXd InitialStateEML2()
     tudat::root_finders::NewtonRaphson newtonRaphson( terminationConditionFunction );
 
     // Let Newton-Raphson search for the root.
-    double gammaL = newtonRaphson.execute( LibrationPointLocationFunction, LibrationPointLocationFunction->getInitialGuess( ) );
+    double gammaL = newtonRaphson.execute( LibrationPointLocationFunction, LibrationPointLocationFunction->getTrueRootLocation( ) );
 
-    L2Initial [xCartesianPositionIndex] = moonInitial[xCartesianPositionIndex] * (1.0 + gammaL);
-    L2Initial [yCartesianVelocityIndex] = - 1023.0 / moonInitial[xCartesianPositionIndex] * L2Initial[xCartesianPositionIndex];
+    L2Initial [xCartesianPositionIndex] = + MoonEarthDistance * gammaL + 2.4320722e7 ; // - 2.42229e7 + 550;
+    L2Initial [yCartesianVelocityIndex] = L2Initial[xCartesianPositionIndex] * 2.0 * pi / secInMonth - 1.43817; // + 0.00784 ;
 
     return L2Initial;
 
