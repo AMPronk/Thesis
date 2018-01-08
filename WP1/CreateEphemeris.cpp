@@ -95,7 +95,7 @@ std::tuple<AccelerationMap, std::vector< std::string >, std::vector< std::string
         MoonInitialStateKeplerian( trueAnomalyIndex ) = 0.0;
 
         bodySettings [ "Moon" ]-> ephemerisSettings = boost::make_shared< KeplerEphemerisSettings >(
-                    MoonInitialStateKeplerian, InitTime, EarthGravitationalParameter, "SSB", "J2000" );
+                    MoonInitialStateKeplerian, InitTime, EarthGravitationalParameter, "Earth", "J2000" );
         bodySettings [ "Moon" ]-> gravityFieldSettings = boost::make_shared< CentralGravityFieldSettings >( MoonGravitationalParameter );
         bodySettings [ "Moon" ]-> atmosphereSettings = NULL;
         bodySettings [ "Moon" ]-> rotationModelSettings = NULL;
@@ -109,6 +109,7 @@ std::tuple<AccelerationMap, std::vector< std::string >, std::vector< std::string
         // Create the spacecraft point mass that is attracted by the sun and the earth
         bodyMap[ "Spacecraft1" ] = boost::make_shared< simulation_setup::Body >( );
     }
+
     if(SCEM)
     {
         // Create the spacecraft point mass that is attracted by the earth and the moon
@@ -145,12 +146,12 @@ std::tuple<AccelerationMap, std::vector< std::string >, std::vector< std::string
     }
 
     if(SCEM){
-        if(moon){
-            accelerationsOfSCEM[ "Moon" ].push_back(
-                        boost::make_shared< AccelerationSettings >( central_gravity ) );
-        }
         if(earth){
             accelerationsOfSCEM[ "Earth" ].push_back(
+                        boost::make_shared< AccelerationSettings >( central_gravity ) );
+        }
+        if(moon){
+            accelerationsOfSCEM[ "Moon" ].push_back(
                         boost::make_shared< AccelerationSettings >( central_gravity ) );
         }
         accelerationMap[ "Spacecraft2" ] = accelerationsOfSCEM;
@@ -167,82 +168,6 @@ std::tuple<AccelerationMap, std::vector< std::string >, std::vector< std::string
     return std::make_tuple(accelerationModelMap, bodiesToPropagate, centralBodies, bodyMap);
 }
 
-
-Eigen::VectorXd CreateEphemerisInitialState(bool sun, bool earth, bool moon)
-{
-
-    Eigen::Vector6d SunInitialState;
-    SunInitialState [xCartesianPositionIndex] = - muSE * AU;
-    SunInitialState [yCartesianPositionIndex] = 0.0;
-    SunInitialState [zCartesianPositionIndex] = 0.0;
-    SunInitialState [xCartesianVelocityIndex] = 0.0;
-    SunInitialState [yCartesianVelocityIndex] = SunInitialState[xCartesianPositionIndex] * 2.0 * pi / (secInYear);
-    SunInitialState [zCartesianVelocityIndex] = 0.0;
-
-    Eigen::Vector6d EarthInitialState;
-    EarthInitialState [xCartesianPositionIndex] = (1.0 - muSE) * AU;
-    EarthInitialState [yCartesianPositionIndex] = 0.0;
-    EarthInitialState [zCartesianPositionIndex] = 0.0;
-    EarthInitialState [xCartesianVelocityIndex] = 0.0;
-    EarthInitialState [yCartesianVelocityIndex] = EarthInitialState[xCartesianPositionIndex] * 2.0 * pi / (secInYear);
-    EarthInitialState [zCartesianVelocityIndex] = 0.0;
-
-    Eigen::Vector6d MoonInitialState;
-    MoonInitialState [xCartesianPositionIndex] = MoonEarthDistance;
-    MoonInitialState [yCartesianPositionIndex] = 0.0;
-    MoonInitialState [zCartesianPositionIndex] = 0.0;
-    MoonInitialState [xCartesianVelocityIndex] = 0.0;
-    MoonInitialState [yCartesianVelocityIndex] = MoonInitialState[xCartesianPositionIndex] * 2.0 * pi / secInMonth;
-    MoonInitialState [zCartesianVelocityIndex] = 0.0;
-
-    int nrOfBodies = sun + earth + moon;
-    Eigen::VectorXd systemInitialState = Eigen::VectorXd(nrOfBodies * 6);
-
-    //begin constructing system initial state
-    if(sun){
-        if(earth){
-            if(moon){
-                systemInitialState.segment(0,6) = SunInitialState;
-                systemInitialState.segment(6,6) = EarthInitialState;
-                systemInitialState.segment(12,6) = MoonInitialState;
-            }
-            else{
-                systemInitialState.segment(0,6) = SunInitialState;
-                systemInitialState.segment(6,6) = EarthInitialState;
-            }
-        }
-        else{
-            if(moon){
-                systemInitialState.segment(0,6) = SunInitialState;
-                systemInitialState.segment(6,6) = MoonInitialState;
-            }
-            else{
-                systemInitialState.segment(0,6) = SunInitialState;
-            }
-        }
-    }
-    else{
-        if(earth){
-            if(moon){
-                systemInitialState.segment(0,6) = EarthInitialState;
-                systemInitialState.segment(6,6) = MoonInitialState;
-            }
-            else{
-                systemInitialState.segment(0,6) = EarthInitialState;
-            }
-        }
-        else{
-            if(moon){
-                systemInitialState.segment(0,6) = MoonInitialState;
-            }
-            else{
-
-            }
-        }
-    }
-
-    return systemInitialState;
-}
 
 Eigen::VectorXd InitialStateSEL2()
 {
@@ -299,8 +224,8 @@ Eigen::VectorXd InitialStateEML2()
     // Let Newton-Raphson search for the root.
     double gammaL = newtonRaphson.execute( LibrationPointLocationFunction, LibrationPointLocationFunction->getTrueRootLocation( ) );
 
-    L2Initial [xCartesianPositionIndex] = + MoonEarthDistance * gammaL + 2.4320722e7 ; // - 2.42229e7 + 550;
-    L2Initial [yCartesianVelocityIndex] = L2Initial[xCartesianPositionIndex] * 2.0 * pi / secInMonth - 1.43817; // + 0.00784 ;
+    L2Initial [xCartesianPositionIndex] = MoonEarthDistance * gammaL + 9.9997183293e4;
+    L2Initial [yCartesianVelocityIndex] = L2Initial[xCartesianPositionIndex] * 2.0 * pi / secInMonth - 0.95575;
 
     return L2Initial;
 

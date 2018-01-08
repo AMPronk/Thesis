@@ -36,7 +36,7 @@ Eigen::MatrixXd CreateInitialConditionsSE(int orbitType, int sampleSize, long do
     Eigen::VectorXd beta;
     Eigen::VectorXd time;
 
-    double limitvalue = 1.0E-2;
+    double limitvalue = 5.0E-2;
 
     long double LowerBeta = -limitvalue;
     long double HigherBeta = limitvalue;
@@ -191,7 +191,7 @@ Eigen::MatrixXd CreateInitialConditionsSE(int orbitType, int sampleSize, long do
             for(int alpha2Counter = 0; alpha2Counter < alpha2.size(); alpha2Counter++)
             {
 //                std::cerr<<" next alpha2 "<<std::endl;
-                for(int sampleSizeer = 0; sampleSizeer < beta.size(); sampleSizeer++)
+                for(int betaCounter = 0; betaCounter < beta.size(); betaCounter++)
                 {
 //                    std::cerr<<" next beta "<<std::endl;
                     for(int timeCounter = 0; timeCounter < time.size(); timeCounter++)
@@ -202,20 +202,20 @@ Eigen::MatrixXd CreateInitialConditionsSE(int orbitType, int sampleSize, long do
                         x =
                                 alpha1[alpha1Counter] * exp( - labda * time[timeCounter] ) * u1[0]
                                 + alpha2[alpha2Counter] * exp( - labda * time[timeCounter] ) * u2[0]
-                                + 2.0 * std::real( beta[sampleSizeer] * exp( (double)nu * std::complex<double>(0.0,-1.0) * time[timeCounter]) * w1[0] );
+                                + 2.0 * std::real( beta[betaCounter] * exp( (double)nu * std::complex<double>(0.0,-1.0) * time[timeCounter]) * w1[0] );
                         y =
                                 alpha1[alpha1Counter] * exp( - labda * time[timeCounter] ) * u1[1]
                                 + alpha2[alpha2Counter] * exp( - labda * time[timeCounter] ) * u2[1]
-                                + 2.0 * std::real( beta[sampleSizeer] * exp( (double)nu * std::complex<double>(0.0,-1.0) * time[timeCounter]) * w1[1] );
+                                + 2.0 * std::real( beta[betaCounter] * exp( (double)nu * std::complex<double>(0.0,-1.0) * time[timeCounter]) * w1[1] );
 
                         xdot =
                                 alpha1[alpha1Counter] * exp( - labda * time[timeCounter] ) * u1[2]
                                 + alpha2[alpha2Counter] * exp( - labda * time[timeCounter] ) * u2[2]
-                                + 2.0 * std::real( beta[sampleSizeer] * exp( (double)nu * std::complex<double>(0.0,-1.0) * time[timeCounter]) * w1[2] );
+                                + 2.0 * std::real( beta[betaCounter] * exp( (double)nu * std::complex<double>(0.0,-1.0) * time[timeCounter]) * w1[2] );
                         ydot =
                                 alpha1[alpha1Counter] * exp( - labda * time[timeCounter] ) * u1[3]
                                 + alpha2[alpha2Counter] * exp( - labda * time[timeCounter] ) * u2[3]
-                                + 2.0 * std::real( beta[sampleSizeer] * exp( (double)nu * std::complex<double>(0.0,-1.0) * time[timeCounter]) * w1[3] );
+                                + 2.0 * std::real( beta[betaCounter] * exp( (double)nu * std::complex<double>(0.0,-1.0) * time[timeCounter]) * w1[3] );
 
                         C = pow( x + L2Distance , 2.0 ) + pow( y , 2.0 ) +
                                 2.0 * (1.0 - muSE)/ pow( pow( x + L2Distance + muSE , 2.0 ) + pow( y , 2.0 ) , 0.5 ) +
@@ -237,7 +237,7 @@ Eigen::MatrixXd CreateInitialConditionsSE(int orbitType, int sampleSize, long do
                             InitialConditions(InitialConditions.rows()-1,4) = C;
                             InitialConditions(InitialConditions.rows()-1,5) = alpha1[alpha1Counter];
                             InitialConditions(InitialConditions.rows()-1,6) = alpha2[alpha2Counter];
-                            InitialConditions(InitialConditions.rows()-1,7) = beta[sampleSizeer];
+                            InitialConditions(InitialConditions.rows()-1,7) = beta[betaCounter];
                             InitialConditions(InitialConditions.rows()-1,8) = time[timeCounter];
                             resultcounter++;
                         }
@@ -274,14 +274,14 @@ Eigen::MatrixXd CreateInitialConditionsEM(int orbitType, int sampleSize, long do
     Eigen::VectorXd beta;
     Eigen::VectorXd time;
 
-    double limitvalue = 1.0E-3;
+    double limitvalue = 1.0E-2;
 
     long double LowerBeta = -limitvalue;
     long double HigherBeta = limitvalue;
-    beta = Eigen::VectorXd::LinSpaced(sampleSize, LowerBeta, HigherBeta);
+    beta = Eigen::VectorXd::LinSpaced(4*sampleSize, LowerBeta, HigherBeta);
 
     long double LowerTime = 0.0;
-    long double HigherTime = 7.0;
+    long double HigherTime = 3.0;
     int TimeCount = sampleSize; //todo, that's just ugly man.
     time = Eigen::VectorXd::LinSpaced(TimeCount, LowerTime, HigherTime);
 
@@ -428,7 +428,7 @@ Eigen::MatrixXd CreateInitialConditionsEM(int orbitType, int sampleSize, long do
             for(int alpha2Counter = 0; alpha2Counter < alpha2.size(); alpha2Counter++)
             {
 //                std::cerr<<" next alpha2 "<<std::endl;
-                for(int sampleSizeer = 0; sampleSizeer < beta.size(); sampleSizeer++)
+                for(int betaCounter = 0; betaCounter < beta.size(); betaCounter++)
                 {
 //                    std::cerr<<" next beta "<<std::endl;
                     for(int timeCounter = 0; timeCounter < time.size(); timeCounter++)
@@ -439,20 +439,20 @@ Eigen::MatrixXd CreateInitialConditionsEM(int orbitType, int sampleSize, long do
                         x =
                                 alpha1[alpha1Counter] * exp( - labda * time[timeCounter] ) * u1[0]
                                 + alpha2[alpha2Counter] * exp( - labda * time[timeCounter] ) * u2[0]
-                                + 2.0 * std::real( beta[sampleSizeer] * exp( (double)nu * std::complex<double>(0.0,-1.0) * time[timeCounter]) * w1[0] );
+                                + 2.0 * std::real( beta[betaCounter] * exp( (double)nu * std::complex<double>(0.0,-1.0) * time[timeCounter]) * w1[0] );
                         y =
                                 alpha1[alpha1Counter] * exp( - labda * time[timeCounter] ) * u1[1]
                                 + alpha2[alpha2Counter] * exp( - labda * time[timeCounter] ) * u2[1]
-                                + 2.0 * std::real( beta[sampleSizeer] * exp( (double)nu * std::complex<double>(0.0,-1.0) * time[timeCounter]) * w1[1] );
+                                + 2.0 * std::real( beta[betaCounter] * exp( (double)nu * std::complex<double>(0.0,-1.0) * time[timeCounter]) * w1[1] );
 
                         xdot =
                                 alpha1[alpha1Counter] * exp( - labda * time[timeCounter] ) * u1[2]
                                 + alpha2[alpha2Counter] * exp( - labda * time[timeCounter] ) * u2[2]
-                                + 2.0 * std::real( beta[sampleSizeer] * exp( (double)nu * std::complex<double>(0.0,-1.0) * time[timeCounter]) * w1[2] );
+                                + 2.0 * std::real( beta[betaCounter] * exp( (double)nu * std::complex<double>(0.0,-1.0) * time[timeCounter]) * w1[2] );
                         ydot =
                                 alpha1[alpha1Counter] * exp( - labda * time[timeCounter] ) * u1[3]
                                 + alpha2[alpha2Counter] * exp( - labda * time[timeCounter] ) * u2[3]
-                                + 2.0 * std::real( beta[sampleSizeer] * exp( (double)nu * std::complex<double>(0.0,-1.0) * time[timeCounter]) * w1[3] );
+                                + 2.0 * std::real( beta[betaCounter] * exp( (double)nu * std::complex<double>(0.0,-1.0) * time[timeCounter]) * w1[3] );
 
                         C = pow( x + L2Distance , 2.0 ) + pow( y , 2.0 ) +
                                 2.0 * (1.0 - muEM)/ pow( pow( x + L2Distance + muEM , 2.0 ) + pow( y , 2.0 ) , 0.5 ) +
@@ -465,13 +465,6 @@ Eigen::MatrixXd CreateInitialConditionsEM(int orbitType, int sampleSize, long do
                         {
 //                            std::cerr<<"accepted #" + boost::lexical_cast< std::string >(resultcounter + 1) + " C " + boost::lexical_cast< std::string >( C )<<std::endl;
 
-//                            std::cerr<<"x = " + boost::lexical_cast< std::string >(x) + ". y = " + boost::lexical_cast< std::string >( y )
-//                                    + ". xdot = " + boost::lexical_cast< std::string >( xdot ) + ". ydot = " + boost::lexical_cast< std::string >( ydot )<<std::endl;
-
-
-                            //Eigen::VectorXd tempConditions = InitialConditions;
-                            //InitialConditions.resize(tempConditions.rows()+1,tempConditions.cols());
-                            //InitialConditions.topRows(tempConditions.rows()) = tempConditions;
 
                             InitialConditions.conservativeResize(InitialConditions.rows()+1,InitialConditions.cols());
 
@@ -482,7 +475,7 @@ Eigen::MatrixXd CreateInitialConditionsEM(int orbitType, int sampleSize, long do
                             InitialConditions(InitialConditions.rows()-1,4) = C;
                             InitialConditions(InitialConditions.rows()-1,5) = alpha1[alpha1Counter];
                             InitialConditions(InitialConditions.rows()-1,6) = alpha2[alpha2Counter];
-                            InitialConditions(InitialConditions.rows()-1,7) = beta[sampleSizeer];
+                            InitialConditions(InitialConditions.rows()-1,7) = beta[betaCounter];
                             InitialConditions(InitialConditions.rows()-1,8) = time[timeCounter];
                             resultcounter++;
                         }

@@ -50,30 +50,54 @@ int main( )
     ///////////////////////////     SETTING OF NECESSARY VARIABLES       //////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    bool addSun = true;
-    bool addEarth = true;
-    bool addMoon = false;
-    bool addOlfarSE = addSun;
-    bool addOlfarEM = addMoon; //Select EITHER addOlfarSE OR addOlfarEM -- NEVER BOTH.
+    /// determine wether the script runs in the Sun-Earth or the Earth-Moon system
+    bool runSE = true;
+    bool runEM = false;
 
+    /// determine which trajectories to create
     bool runL2 = true;
 
     bool orbitType1 = false;
     bool orbitType2 = false;
-    bool orbitType3 = false;
-    bool orbitType4 = false;
-    bool orbitType5 = false;
-    bool orbitType6 = false;
+    bool orbitType3 = true;
+    bool orbitType4 = true;
+    bool orbitType5 = true;
+    bool orbitType6 = true;
 
-    //Propagation constants used
+    /// Initial Conditions Creation constants used
+    int InitCondSampleSize = 17;
+
+    /// necessar booleans for ephemeris creation
+    bool addSun;
+    bool addEarth;
+    bool addMoon;
+    bool addOlfarSE;
+    bool addOlfarEM;
+
+    if(runSE){
+        addSun = true;
+        addEarth = true;
+        addMoon = false;
+        addOlfarSE = true;
+        addOlfarEM = false;
+    }
+    else if(runEM){
+        addSun = false;
+        addEarth = true;
+        addMoon = true;
+        addOlfarSE = false;
+        addOlfarEM = true;
+    }
+
+    /// Propagation constants used
     double InitialStateTime = tudat::physical_constants::SIDEREAL_YEAR;
     long double PropagationLength;
 
     if(addOlfarSE){
-        PropagationLength = 1.0 * tudat::physical_constants::SIDEREAL_YEAR; //cannot be more than one year!
+        PropagationLength = 0.7 * tudat::physical_constants::SIDEREAL_YEAR; //cannot be more than InitialStateTime!
     }
     else if(addOlfarEM){
-        PropagationLength = 0.3 * tudat::physical_constants::SIDEREAL_YEAR; //cannot be more than one year!
+        PropagationLength = 0.3 * tudat::physical_constants::SIDEREAL_YEAR; //cannot be more than InitialStateTime!
     }
 
     const numerical_integrators::RungeKuttaCoefficients::CoefficientSets coefficientSet =
@@ -102,14 +126,13 @@ int main( )
     double relativeErrorTolerance = -1.0E-20;
     double absoluteErrorTolerance = -1.0E-12;
 
-    //Initial Conditions Creation constants used
-    int InitCondSampleSize = 17;
 
-    double ClowSE = 3.0;
-    double ChighSE = 3.002;
 
-    double ClowEM = 3.19;//3.195;
-    double ChighEM = 3.2;
+    double ClowSE = 2.98;
+    double ChighSE = 3.5;
+
+    double ClowEM = 3.1;
+    double ChighEM = 3.3;
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -132,7 +155,6 @@ int main( )
     /// Create empty initial state vectors for spacecraft
 
     Eigen::VectorXd SCInitialState = Eigen::VectorXd(6);
-
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -233,7 +255,9 @@ int main( )
                                                        InitialConditions(setcount,1),
                                                        InitialConditions(setcount,2),
                                                        InitialConditions(setcount,3));
+
             }
+
 
 
             ///
