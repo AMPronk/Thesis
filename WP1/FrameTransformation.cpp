@@ -26,7 +26,6 @@ Eigen::Vector6d FrameTransformationSE(long double x, long double y, long double 
     //define the speed at which the system rotates: One full rotation per year
     long double rotationSpeed = 2.0 * pi / secInYear;
     //define the angle at which the L2 point is currently placed, compared to the x-axis.
-    //TODO, shouldn't be hardcode
     long double rotationAngle = 0.0;
 
     // scale the coordinates for distance
@@ -38,7 +37,6 @@ Eigen::Vector6d FrameTransformationSE(long double x, long double y, long double 
 
 
     // add rotation and rotational speed to get initial conditions in the earth centered frame
-
     long double x3 = x2 * std::cos(rotationAngle) + y2 * std::sin(rotationAngle) ;
     long double y3 = y2 * std::cos(rotationAngle) - x2 * std::sin(rotationAngle) ;
 
@@ -71,12 +69,7 @@ Eigen::Vector6d FrameTransformationEM(long double x, long double y, long double 
     //define the speed at which the system rotates: set rotational time for the moon
     long double rotationSpeed = L2Speed / L2Distance; //2.0 * pi / secInMonth;
     //define the angle at which the L2 point is currently placed, compared to the x-axis.
-    //TODO, shouldn't be hardcode
     long double rotationAngle = 0.0;
-
-//    std::cerr<<"x = " + boost::lexical_cast< std::string >(x) + ". y = " + boost::lexical_cast< std::string >( y )
-//               + ". xdot = " + boost::lexical_cast< std::string >( xdot ) + ". ydot = " + boost::lexical_cast< std::string >( ydot )<<std::endl;
-
 
     // scale the coordinates for distance
     long double x2 = (MoonEarthDistance * x) + L2Distance;
@@ -85,10 +78,6 @@ Eigen::Vector6d FrameTransformationEM(long double x, long double y, long double 
     long double xdot2 = MoonEarthDistance * rotationSpeed * xdot;
     long double ydot2 = MoonEarthDistance * rotationSpeed * ydot;
 
-//    std::cerr<<"x2 = " + boost::lexical_cast< std::string >(x2) + ". y2 = " + boost::lexical_cast< std::string >( y2 )
-//               + ". xdot2 = " + boost::lexical_cast< std::string >( xdot2 ) + ". ydot2 = " + boost::lexical_cast< std::string >( ydot2 )<<std::endl;
-
-
     // add rotation and rotational speed to get initial conditions in the earth centered frame
 
     long double x3 = x2;
@@ -96,10 +85,6 @@ Eigen::Vector6d FrameTransformationEM(long double x, long double y, long double 
 
     long double xdot3 = xdot2 - rotationSpeed * y2 ;
     long double ydot3 = ydot2 + rotationSpeed * x2 ;
-
-//    std::cerr<<"x3 = " + boost::lexical_cast< std::string >(x3) + ". y3 = " + boost::lexical_cast< std::string >( y3 )
-//               + ". xdot3 = " + boost::lexical_cast< std::string >( xdot3 ) + ". ydot3 = " + boost::lexical_cast< std::string >( ydot3 )<<std::endl;
-
 
     //initial conditions in the earth centered frame, as used for the propagation
     Eigen::Vector6d CartesianElements;

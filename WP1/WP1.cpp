@@ -51,29 +51,39 @@ int main( )
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// determine wether the script runs in the Sun-Earth or the Earth-Moon system
+    // One of these booleans should be true, the others false.
     bool runSE = true;
     bool runEM = false;
 
     /// determine which trajectories to create
+    // Set runL2 to true if an output of the location of the second Lagrange point is required
     bool runL2 = true;
 
+    // Determine which of the orbit types should be calculated.
+    // orbitType1: stable asymptotic orbits
     bool orbitType1 = false;
+    // orbitType2: unstable asymptotic orbits
     bool orbitType2 = false;
+    // orbitType3: non-transit orbits, inside hillsphere
     bool orbitType3 = true;
+    // orbitType4: non-transit orbits, outside hillsphere
     bool orbitType4 = true;
+    // orbitType5: transit orbit, into hillsphere
     bool orbitType5 = true;
+    // orbitType6: transit orbit, out of hillsphere
     bool orbitType6 = true;
 
-    /// Initial Conditions Creation constants used
+    /// Initial Conditions Creation sample size used
     int InitCondSampleSize = 17;
 
-    /// necessar booleans for ephemeris creation
+    /// necessary booleans for ephemeris creation
     bool addSun;
     bool addEarth;
     bool addMoon;
     bool addOlfarSE;
     bool addOlfarEM;
 
+    /// Determine which bodies must be created
     if(runSE){
         addSun = true;
         addEarth = true;
@@ -90,7 +100,10 @@ int main( )
     }
 
     /// Propagation constants used
+    // determine the starting time for the propagation
     double InitialStateTime = tudat::physical_constants::SIDEREAL_YEAR;
+
+    // determine the timespan of the propagation, dependent on the system used
     long double PropagationLength;
 
     if(addOlfarSE){
@@ -100,11 +113,15 @@ int main( )
         PropagationLength = 0.3 * tudat::physical_constants::SIDEREAL_YEAR; //cannot be more than InitialStateTime!
     }
 
+    // determine the integrator coeeficient set
     const numerical_integrators::RungeKuttaCoefficients::CoefficientSets coefficientSet =
             numerical_integrators::RungeKuttaCoefficients::CoefficientSets::rungeKuttaFehlberg78;
+
+    // determine the initial stepsize
     double initStepSizeB = -1.0;
     double initStepSizeF = 1.0;
 
+    // determine theminimum and maximum stepsize, dependent on the system used
     double minimumStepSizeB;
     double maximumStepSizeB;
     double minimumStepSizeF;
@@ -123,11 +140,11 @@ int main( )
         maximumStepSizeF = 50.0;
     }
 
+    // determine the error tolerance
     double relativeErrorTolerance = -1.0E-20;
     double absoluteErrorTolerance = -1.0E-12;
 
-
-
+    /// Determine the allowable range of energies for each of the systems, as limits of the Jacobi's Constant
     double ClowSE = 2.98;
     double ChighSE = 3.5;
 
@@ -139,6 +156,8 @@ int main( )
     ///////////////////////     CREATE EPHEMERIS AND ACCELERATIONS       //////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     std::cerr<<"Start CreateEphemeris."<<std::endl;
+
+    /// Create the ephemeris model
 
     AccelerationMap ModelMap;
     std::vector< std::string > bodiesToPropagate;
@@ -158,10 +177,10 @@ int main( )
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ///////////////////////     TESTPARTTESTPARTTESTPARTTESTPART       //////////////////////////////////////////////////
+    ///////////////////////     L2 LOCATION CALCULATION           /////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // TODO REMOVE
 
+    /// Create a spacecraft with the initial conditions of the L2 point
 
     if(addOlfarSE)
     {
@@ -174,11 +193,14 @@ int main( )
         SCInitialState = InitialStateEML2();
     }
 
+    /// Propagate the model with the L2 spacecraft
 
     if(runL2){
 
+        /// Set up the propagation
+
         double PropagationStart = InitialStateTime;
-        double PropagationEnds = InitialStateTime + PropagationLength; //tudat::physical_constants::SIDEREAL_YEAR;
+        double PropagationEnds = InitialStateTime + PropagationLength;
 
         boost::shared_ptr< IntegratorSettings< > > integratorSettingsS1;
         integratorSettingsS1 = boost::make_shared< RungeKuttaVariableStepSizeSettings< > >
@@ -189,13 +211,13 @@ int main( )
                 boost::make_shared< TranslationalStatePropagatorSettings< > >
                 (centralBodies, ModelMap, bodiesToPropagate, SCInitialState, PropagationEnds, cowell);
 
-        ///
         /// Create simulation object and propagate dynamics.
-        ///
+
         SingleArcDynamicsSimulator< > dynamicsSimulatorS1(
                     bodyMap, integratorSettingsS1, propagatorSettingsS1, true, true, false );
         std::map< double, Eigen::VectorXd > tempIntegrationResultS1 = dynamicsSimulatorS1.getEquationsOfMotionNumericalSolution( );
 
+        /// Write to file
 
         WriteToFile(tempIntegrationResultS1, bodyMap, "L2trajectory", addSun, addEarth, addMoon);
 
@@ -207,13 +229,12 @@ int main( )
     ///////////////////////     CREATE NECESSARY VARIABLE SAVINGS               ///////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
     Eigen::MatrixXd InitialConditions;
     long double PropagationStart;
     long double PropagationEnds;
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ///////////////////////     RUN ORBIT TYPE 1: ASYMPTOTIC, TOWARDS L2        ///////////////////////////////////////////
+    ///////////////////////     RUN ORBIT TYPE 1: ASYMPTOTIC, STABLE            ///////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     if(orbitType1)
@@ -228,7 +249,6 @@ int main( )
         {
             InitialConditions = CreateInitialConditionsEM(1,InitCondSampleSize,ClowEM,ChighEM);
         }
-
 
         for(int setcount = 2; setcount <= InitialConditions.rows() ; setcount++)
         {
@@ -305,6 +325,11 @@ int main( )
 
         }
     }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////     RUN ORBIT TYPE 2: ASYMPTOTIC, UNSTABLE          ///////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
     if(orbitType2)
     {
@@ -392,6 +417,10 @@ int main( )
 
         }
     }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////     RUN ORBIT TYPE 3: NON-TRANSIT, IN HILL SPHERE        //////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     if(orbitType3)
     {
@@ -510,6 +539,11 @@ int main( )
         }
     }
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////     RUN ORBIT TYPE 4: NON-TRANSIT, OUTS HILL SPHERE        ////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
     if(orbitType4)
     {
         std::cerr<<"Start orbit type 4."<<std::endl;
@@ -627,6 +661,10 @@ int main( )
         }
     }
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////     RUN ORBIT TYPE 5: TRANSIT, INTO HILL SPHERE          //////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     if(orbitType5)
     {
         std::cerr<<"Start orbit type 5."<<std::endl;
@@ -743,6 +781,10 @@ int main( )
 
         }
     }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////     RUN ORBIT TYPE 6: TRANSIT, OUT OF HILL SPHERE          ////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     if(orbitType6)
     {

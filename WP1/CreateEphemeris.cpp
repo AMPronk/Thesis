@@ -25,10 +25,17 @@ using namespace tudat::basic_astrodynamics;
 
 std::tuple<AccelerationMap, std::vector< std::string >, std::vector< std::string >, NamedBodyMap> CreateEphemeris(bool sun, bool earth, bool moon, bool SCSE, bool SCEM, double InitTime, double PropagationLength)
 {
+    ///
+    /// The Create Ephemeris script creates the ephemeris model based on the input variables.
+    /// Booleans sun, earth, moon, SCSE and SCEM determine which bodies are used in the model.
+    /// Doubles InitTime and PropagationLength determine the timespan for which the ephemeris model is created.
+    ///
 
+    // Create empty bodymap and bodysettings variables to fill up.
     NamedBodyMap bodyMap;
     std::map< std::string, boost::shared_ptr< BodySettings > > bodySettings;
 
+    // Determine which planetary bodies should be created in the ephemeris model, based on the input booleans.
     std::vector< std::string > bodiesToCreate;
 
     if(sun)
@@ -44,18 +51,21 @@ std::tuple<AccelerationMap, std::vector< std::string >, std::vector< std::string
         bodiesToCreate.push_back( "Moon" );
     }
 
+    // Retrieve the standard settings for each of the bodies, over a timespan determined by the input doubles
     bodySettings = getDefaultBodySettings( bodiesToCreate, InitTime - PropagationLength - 3000.0, InitTime + PropagationLength + 3000.0 );
 
 
+    // Set the initial conditions of the planetary bodies
     if(sun)
     {
+        // The Sun remains at the center of the ephemeris model
         Eigen::Vector6d SunInitialState;
-        SunInitialState( 0 ) = 0.0;//muSE * AU;
+        SunInitialState( 0 ) = 0.0;
         SunInitialState( 1 ) = 0.0;
         SunInitialState( 2 ) = 0.0;
         SunInitialState( 3 ) = 0.0;
         SunInitialState( 4 ) = 0.0;
-        SunInitialState( 5  ) = 0.0;//pi;
+        SunInitialState( 5  ) = 0.0;
 
         bodySettings [ "Sun" ]-> ephemerisSettings = boost::make_shared< ConstantEphemerisSettings >(
                     SunInitialState, "SSB", "J2000" );
@@ -68,8 +78,9 @@ std::tuple<AccelerationMap, std::vector< std::string >, std::vector< std::string
 
     if(earth)
     {
+        // The Earth has a circular orbit around the Sun
         Eigen::Vector6d EarthInitialStateKeplerian;
-        EarthInitialStateKeplerian( semiMajorAxisIndex) = AU;//(1.0 - muSE) * AU;
+        EarthInitialStateKeplerian( semiMajorAxisIndex) = AU;
         EarthInitialStateKeplerian( eccentricityIndex) = 0.0;
         EarthInitialStateKeplerian( inclinationIndex) = 0.0;
         EarthInitialStateKeplerian( argumentOfPeriapsisIndex) = 0.0;
@@ -86,6 +97,7 @@ std::tuple<AccelerationMap, std::vector< std::string >, std::vector< std::string
 
     if(moon)
     {
+        // The Moon has a circular orbit around the Earth
         Eigen::Vector6d MoonInitialStateKeplerian;
         MoonInitialStateKeplerian( semiMajorAxisIndex) = MoonEarthDistance;
         MoonInitialStateKeplerian( eccentricityIndex) = 0.0;
@@ -102,6 +114,7 @@ std::tuple<AccelerationMap, std::vector< std::string >, std::vector< std::string
         bodySettings [ "Moon" ]-> shapeModelSettings = NULL;
     }
 
+    // Enter the settings implemented above into the ephemeris model
     bodyMap = createBodies(bodySettings);
 
     if(SCSE)
@@ -131,6 +144,7 @@ std::tuple<AccelerationMap, std::vector< std::string >, std::vector< std::string
     std::map< std::string, std::vector< boost::shared_ptr< AccelerationSettings > > > accelerationsOfSCSE;
     std::map< std::string, std::vector< boost::shared_ptr< AccelerationSettings > > > accelerationsOfSCEM;
 
+    // Attractions in the Sun Earth system
     if(SCSE){
         if(sun){
             accelerationsOfSCSE[ "Sun" ].push_back(
@@ -145,6 +159,7 @@ std::tuple<AccelerationMap, std::vector< std::string >, std::vector< std::string
         centralBodies.push_back( "Earth" );
     }
 
+    // Attractions in the Earth Moon system
     if(SCEM){
         if(earth){
             accelerationsOfSCEM[ "Earth" ].push_back(
@@ -171,6 +186,11 @@ std::tuple<AccelerationMap, std::vector< std::string >, std::vector< std::string
 
 Eigen::VectorXd InitialStateSEL2()
 {
+    ///
+    /// InitialStateSEL2 sets the initial conditions for the second Lagrange point of the Sun Earth system
+    ///
+
+    // begin with a null vector
     Eigen::Vector6d L2Initial;
     L2Initial(0) = 0.0;
     L2Initial(1) = 0.0;
@@ -193,7 +213,7 @@ Eigen::VectorXd InitialStateSEL2()
     // Let Newton-Raphson search for the root.
     long double gammaL = newtonRaphson.execute( LibrationPointLocationFunction, LibrationPointLocationFunction->getTrueRootLocation() );
 
-
+    // Apply manual corrections, based on trial and error, to ensure the stability of the point
     L2Initial [xCartesianPositionIndex] = gammaL * AU + 507.776127;
     L2Initial [yCartesianVelocityIndex] = L2Initial[xCartesianPositionIndex] * 2.0 * pi / secInYear - 0.000448950212 ;
 
@@ -202,6 +222,11 @@ Eigen::VectorXd InitialStateSEL2()
 
 Eigen::VectorXd InitialStateEML2()
 {
+    ///
+    /// InitialStateEML2 sets the initial conditions for the second Lagrange point of the Earth Moon system
+    ///
+
+    // begin with a null vector
     Eigen::Vector6d L2Initial;
     L2Initial(0) = 0.0;
     L2Initial(1) = 0.0;
@@ -224,6 +249,7 @@ Eigen::VectorXd InitialStateEML2()
     // Let Newton-Raphson search for the root.
     double gammaL = newtonRaphson.execute( LibrationPointLocationFunction, LibrationPointLocationFunction->getTrueRootLocation( ) );
 
+    // Apply manual corrections, based on trial and error, to ensure the stability of the point
     L2Initial [xCartesianPositionIndex] = MoonEarthDistance * gammaL + 9.9997183293e4;
     L2Initial [yCartesianVelocityIndex] = L2Initial[xCartesianPositionIndex] * 2.0 * pi / secInMonth - 0.95575;
 
