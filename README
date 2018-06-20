@@ -1,1 +1,4 @@
-Documentation for the code can be obtained at http://tudat.tudelft.nl.
+Copy the WP1 folder into TUDAT's \tudatBundle\tudatApplications\ folder. 
+Open the top-level \tudatBundle\CMakeLists.txt and add the directory to the bottom of the file using the folder name as just set up: 
+add_subdirectory( "${PROJECTROOT}/tudatApplications/WP1/WP1")
+Load and run the WP1 file in TUDAT.
